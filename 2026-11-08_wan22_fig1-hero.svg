@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#ea580c"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="560" fill="#ffffff"/>
+
+  <!-- ===== 左：可以喂给它什么 ===== -->
+  <rect x="40" y="72" width="236" height="312" rx="16" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+  <text x="158" y="112" font-size="16" font-weight="700" fill="#7c2d12" text-anchor="middle">可以喂给它什么</text>
+
+  <rect x="88" y="140" width="140" height="46" rx="23" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="158" y="168" font-size="15" fill="#7c2d12" text-anchor="middle">文字</text>
+
+  <rect x="88" y="198" width="140" height="46" rx="23" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="158" y="226" font-size="15" fill="#7c2d12" text-anchor="middle">图片</text>
+
+  <rect x="88" y="256" width="140" height="46" rx="23" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="158" y="284" font-size="15" fill="#7c2d12" text-anchor="middle">语音</text>
+
+  <rect x="88" y="314" width="140" height="46" rx="23" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="158" y="342" font-size="15" fill="#7c2d12" text-anchor="middle">角色图</text>
+
+  <!-- ===== 中：Wan2.2 的五个模型 ===== -->
+  <rect x="336" y="72" width="488" height="312" rx="18" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+  <text x="580" y="112" font-size="20" font-weight="700" fill="#0f172a" text-anchor="middle">Wan2.2 的五个模型</text>
+
+  <rect x="417" y="172" width="88" height="60" rx="30" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="461" y="207" font-size="14" fill="#5b21b6" text-anchor="middle">文生视频</text>
+
+  <rect x="525" y="172" width="88" height="60" rx="30" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="569" y="207" font-size="14" fill="#5b21b6" text-anchor="middle">图生视频</text>
+
+  <rect x="633" y="172" width="110" height="60" rx="30" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="688" y="207" font-size="14" fill="#5b21b6" text-anchor="middle">文+图生视频</text>
+
+  <rect x="475" y="284" width="102" height="60" rx="30" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="526" y="319" font-size="14" fill="#5b21b6" text-anchor="middle">语音生视频</text>
+
+  <rect x="597" y="284" width="88" height="60" rx="30" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="641" y="319" font-size="14" fill="#5b21b6" text-anchor="middle">角色动画</text>
+
+  <!-- ===== 右：一个模型 / 五个入口 / 一段视频 ===== -->
+  <rect x="884" y="72" width="276" height="312" rx="16" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="1022" y="194" font-size="16" font-weight="700" fill="#1e3a8a" text-anchor="middle">一个模型</text>
+  <text x="1022" y="230" font-size="16" font-weight="700" fill="#1e3a8a" text-anchor="middle">五个入口</text>
+  <text x="1022" y="270" font-size="18" font-weight="700" fill="#2563eb" text-anchor="middle">一段视频</text>
+
+  <!-- ===== 箭头：4 个输入 -> 中间大框 ===== -->
+  <g fill="none" stroke="#ea580c" stroke-width="2" marker-end="url(#arrowOrange)">
+    <path d="M229,163 L335,163"/>
+    <path d="M229,221 L335,221"/>
+    <path d="M229,279 L335,279"/>
+    <path d="M229,337 L335,337"/>
+  </g>
+
+  <!-- ===== 箭头：中间大框 -> 右面板 ===== -->
+  <path d="M826,228 L881,228" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrowBlue)"/>
+
+  <!-- ===== 底部通栏 ===== -->
+  <rect x="40" y="452" width="1120" height="40" rx="10" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="600" y="477" font-size="14" fill="#64748b" text-anchor="middle">同一个骨架：先把画面压成小网格 → 反复修改 → 再还原成视频</text>
+</svg>

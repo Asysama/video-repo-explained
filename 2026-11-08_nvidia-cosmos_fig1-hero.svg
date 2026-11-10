@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrowSlate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#334155"/>
+    </marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#ea580c"/>
+    </marker>
+    <linearGradient id="gEdge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#94a3b8"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <linearGradient id="gNano" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#64748b"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="gSuper" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#334155"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="560" fill="#ffffff"/>
+
+  <!-- ===== 左：模型档位（宽度递增） ===== -->
+  <g>
+    <text x="112" y="181" font-size="12" fill="#94a3b8" text-anchor="end">车机/边缘</text>
+    <rect x="124" y="150" width="140" height="52" rx="10" fill="url(#gEdge)" stroke="#334155" stroke-width="1.5"/>
+    <text x="194" y="183" font-size="16" font-weight="700" fill="#1e293b" text-anchor="middle">Edge · 4B</text>
+
+    <text x="112" y="265" font-size="12" fill="#94a3b8" text-anchor="end">主力</text>
+    <rect x="124" y="234" width="195" height="52" rx="10" fill="url(#gNano)" stroke="#334155" stroke-width="1.5"/>
+    <text x="221.5" y="267" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">Nano · 16B</text>
+
+    <text x="112" y="349" font-size="12" fill="#94a3b8" text-anchor="end">高质量</text>
+    <rect x="124" y="318" width="250" height="52" rx="10" fill="url(#gSuper)" stroke="#334155" stroke-width="1.5"/>
+    <text x="249" y="351" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">Super · 64B</text>
+  </g>
+
+  <!-- ===== 中：同一个模型 ===== -->
+  <g>
+    <rect x="428" y="180" width="340" height="200" rx="14" fill="#f1f5f9" stroke="#334155" stroke-width="1.5" stroke-dasharray="7 5"/>
+    <text x="598" y="268" font-size="22" font-weight="700" fill="#0f172a" text-anchor="middle">同一个模型</text>
+    <text x="598" y="304" font-size="16" fill="#334155" text-anchor="middle">既看得懂，又画得出</text>
+    <text x="598" y="408" font-size="12" fill="#64748b" text-anchor="middle">Mixture-of-Transformers</text>
+  </g>
+
+  <!-- ===== 右：能力胶囊 ===== -->
+  <g>
+    <rect x="935" y="144" width="210" height="58" rx="27" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="1040" y="180" font-size="16" font-weight="600" fill="#7c2d12" text-anchor="middle">画：视频与图像</text>
+
+    <rect x="935" y="240" width="210" height="58" rx="27" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="1040" y="276" font-size="16" font-weight="600" fill="#7c2d12" text-anchor="middle">读：视频与图像</text>
+
+    <rect x="935" y="336" width="210" height="58" rx="27" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="1040" y="372" font-size="16" font-weight="600" fill="#7c2d12" text-anchor="middle">动：动作与轨迹</text>
+  </g>
+
+  <!-- ===== 箭头：档位 -> 同一个模型 ===== -->
+  <g fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrowSlate)">
+    <path d="M268,176 C340,176 344,206 424,206"/>
+    <path d="M323,260 C366,260 372,262 424,262"/>
+    <path d="M378,344 C402,344 404,354 424,354"/>
+  </g>
+
+  <!-- ===== 箭头：同一个模型 -> 能力 ===== -->
+  <g fill="none" stroke="#ea580c" stroke-width="2" marker-end="url(#arrowOrange)">
+    <path d="M768,212 C830,212 838,173 933,173"/>
+    <path d="M768,280 L933,269"/>
+    <path d="M768,346 C830,346 838,365 933,365"/>
+  </g>
+
+  <!-- ===== 底部说明条 ===== -->
+  <rect x="30" y="506" width="1140" height="34" rx="6" fill="#e2e8f0"/>
+  <text x="600" y="528" font-size="13" fill="#64748b" text-anchor="middle">同一个接口，既能生成、也能推理、也能当物理仿真的引擎 —— 但仓库里只有规格与测速，没有代码</text>
+</svg>

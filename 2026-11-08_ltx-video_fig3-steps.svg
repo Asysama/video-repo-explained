@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="720" viewBox="0 0 1400 720" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <title>LTX-Video 跑一次要算多少次 DiT 前向</title>
+  <desc>横向堆叠条形图，横轴为 DiT 前向调用总次数（0 到 45，线性刻度）。13B dev（两遍）共 40 次，其中 27 步 batch 为 1~3（深紫），13 步为单份（浅紫）；13B 蒸馏版（两遍）与 2B 蒸馏版（两遍）各 10 次且全部单份；2B 基础版（单遍）40 次且每步 batch 3。</desc>
+
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <!-- ===================== 标题 ===================== -->
+  <text x="60" y="48" font-size="22" font-weight="bold" fill="#1e293b">跑一次视频生成，DiT 前向要算多少次？</text>
+  <text x="60" y="78" font-size="14" fill="#64748b">横轴 = DiT 前向调用次数（一步 = 一次前向；这一次里同时算几份 = batch）</text>
+
+  <!-- ===================== 图例（右上，右对齐不贴边） ===================== -->
+  <g>
+    <rect x="1020" y="94" width="12" height="12" rx="2" fill="#c4b5fd"/>
+    <text x="1040" y="105" font-size="14" fill="#334155">单份（batch 1）</text>
+    <rect x="1165" y="94" width="12" height="12" rx="2" fill="#7c3aed"/>
+    <text x="1185" y="105" font-size="14" fill="#334155">多份（batch 2~3）</text>
+  </g>
+
+  <!-- ===================== 说明框标题 ===================== -->
+  <text x="1040" y="138" font-size="14" font-weight="bold" fill="#334155">每步算几份（num_conds）</text>
+
+  <!-- ===================== 说明框 ===================== -->
+  <rect x="1040" y="150" width="320" height="100" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="1056" y="182" font-size="13" fill="#334155">每步的份数 = 1 + 开启引导?1 + 开启跳层?1</text>
+  <text x="1056" y="206" font-size="13" fill="#334155">蒸馏版引导为 1、跳层为 0 → 永远只算一份</text>
+  <text x="1056" y="230" font-size="13" fill="#334155">完整版中段开引导和跳层 → 一次算三份</text>
+
+  <!-- ===================== 网格与坐标轴 ===================== -->
+  <g stroke="#e2e8f0" stroke-width="1">
+    <line x1="455.56" y1="140" x2="455.56" y2="545"/>
+    <line x1="611.11" y1="140" x2="611.11" y2="545"/>
+    <line x1="766.67" y1="140" x2="766.67" y2="545"/>
+    <line x1="922.22" y1="140" x2="922.22" y2="545"/>
+  </g>
+  <line x1="300" y1="140" x2="300" y2="545" stroke="#cbd5e1" stroke-width="1.2"/>
+  <line x1="300" y1="545" x2="1000" y2="545" stroke="#334155" stroke-width="1.4"/>
+
+  <g font-size="12" fill="#64748b" text-anchor="middle">
+    <text x="300" y="567">0</text>
+    <text x="455.56" y="567">10</text>
+    <text x="611.11" y="567">20</text>
+    <text x="766.67" y="567">30</text>
+    <text x="922.22" y="567">40</text>
+  </g>
+  <text x="650" y="597" font-size="14" fill="#334155" text-anchor="middle">模型前向调用次数</text>
+
+  <!-- ===================== 条形 ===================== -->
+  <!-- 行 1：13B dev（两遍） 40 次 = 27 步多份 + 13 步单份 -->
+  <text x="288" y="179" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" dominant-baseline="middle">13B dev（两遍）</text>
+  <rect x="300" y="150" width="420" height="58" fill="#7c3aed"/>
+  <rect x="720" y="150" width="202.22" height="58" fill="#c4b5fd"/>
+  <text x="510" y="179" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">27 步</text>
+  <text x="821.11" y="179" font-size="14" font-weight="bold" fill="#5b21b6" text-anchor="middle" dominant-baseline="middle">13 步</text>
+  <text x="932" y="179" font-size="16" font-weight="bold" fill="#6d28d9" dominant-baseline="middle">40</text>
+
+  <!-- 行 2：13B 蒸馏版（两遍） 10 次，全部单份 -->
+  <text x="288" y="283" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" dominant-baseline="middle">13B 蒸馏版（两遍）</text>
+  <rect x="300" y="254" width="155.56" height="58" fill="#c4b5fd"/>
+  <text x="377.78" y="283" font-size="14" font-weight="bold" fill="#5b21b6" text-anchor="middle" dominant-baseline="middle">10 步</text>
+  <text x="465.56" y="283" font-size="16" font-weight="bold" fill="#6d28d9" dominant-baseline="middle">10</text>
+
+  <!-- 行 3：2B 蒸馏版（两遍） 10 次，全部单份 -->
+  <text x="288" y="387" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" dominant-baseline="middle">2B 蒸馏版（两遍）</text>
+  <rect x="300" y="358" width="155.56" height="58" fill="#c4b5fd"/>
+  <text x="377.78" y="387" font-size="14" font-weight="bold" fill="#5b21b6" text-anchor="middle" dominant-baseline="middle">10 步</text>
+  <text x="465.56" y="387" font-size="16" font-weight="bold" fill="#6d28d9" dominant-baseline="middle">10</text>
+
+  <!-- 行 4：2B 基础版（单遍） 40 次，每步 batch 3 -->
+  <text x="288" y="491" font-size="14" font-weight="bold" fill="#334155" text-anchor="end" dominant-baseline="middle">2B 基础版（单遍）</text>
+  <rect x="300" y="462" width="622.22" height="58" fill="#7c3aed"/>
+  <text x="611.11" y="491" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">40 步 × 3 份</text>
+  <text x="932" y="491" font-size="16" font-weight="bold" fill="#6d28d9" dominant-baseline="middle">40</text>
+
+  <!-- ===================== 来源 ===================== -->
+  <text x="60" y="688" font-size="12" fill="#6b7280">来源：configs/ltxv-13b-0.9.8-dev.yaml、ltxv-13b-0.9.8-distilled.yaml；ltx_video/pipelines/pipeline_ltx_video.py:1113-1145</text>
+</svg>

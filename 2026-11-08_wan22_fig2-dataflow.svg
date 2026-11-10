@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <defs>
+    <marker id="ar-slate" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#334155"/>
+    </marker>
+    <marker id="ar-orange" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#ea580c"/>
+    </marker>
+    <marker id="ar-purple" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <!-- ================= 标题 ================= -->
+  <text x="700" y="34" text-anchor="middle" font-size="22" font-weight="bold" fill="#1e293b">Wan2.2 T2V-A14B · 从像素到 token 再回到视频（1280×720 · 81 帧）</text>
+
+  <!-- ================= 浅灰虚线标注（贴在各自方框上方） ================= -->
+  <g>
+    <rect x="667" y="54" width="136" height="34" rx="7" fill="#f1f5f9" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="735" y="76" text-anchor="middle" font-size="14" fill="#6b7280">序列越长越吃显存</text>
+    <rect x="857" y="54" width="234" height="34" rx="7" fill="#f1f5f9" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="974" y="76" text-anchor="middle" font-size="14" fill="#6b7280">每一步都可能在两份权重之间换班</text>
+  </g>
+
+  <!-- ================= 主链 1：像素视频 ================= -->
+  <rect x="37" y="138" width="96" height="88" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="85" y="188" text-anchor="middle" font-size="17" fill="#1d4ed8">像素视频</text>
+  <text x="85" y="252" text-anchor="middle" font-size="14" fill="#94a3b8">81 × 720 × 1280 × 3</text>
+
+  <!-- ================= 主链 2：VAE 编码 ================= -->
+  <rect x="169" y="138" width="101" height="88" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="219.5" y="188" text-anchor="middle" font-size="17" fill="#15803d">VAE 编码</text>
+  <text x="219.5" y="252" text-anchor="middle" font-size="14" fill="#94a3b8">压缩 4 × 8 × 8</text>
+
+  <!-- ================= 主链 3：潜变量 ================= -->
+  <rect x="306" y="138" width="79" height="88" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
+  <text x="345.5" y="188" text-anchor="middle" font-size="17" fill="#6d28d9">潜变量</text>
+  <text x="345.5" y="252" text-anchor="middle" font-size="14" fill="#94a3b8">16 × 21 × 90 × 160</text>
+
+  <!-- ================= 主链 4：切块 ================= -->
+  <rect x="421" y="138" width="195" height="88" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
+  <text x="518.5" y="188" text-anchor="middle" font-size="17" fill="#6d28d9">切块（patch 1×2×2）</text>
+  <text x="518.5" y="252" text-anchor="middle" font-size="14" fill="#94a3b8">21 × 45 × 80 个格子</text>
+
+  <!-- ================= 主链 5：75,600 个 token（关键大框） ================= -->
+  <rect x="652" y="126" width="166" height="100" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="3.5"/>
+  <text x="735" y="183" text-anchor="middle" font-size="16" fill="#6d28d9"><tspan font-size="22" font-weight="bold" fill="#5b21b6">75,600</tspan><tspan> 个 token</tspan></text>
+  <text x="735" y="252" text-anchor="middle" font-size="14" fill="#94a3b8">每格 <tspan font-size="16" font-weight="bold" fill="#7c3aed">5,120</tspan> 维</text>
+
+  <!-- ================= 主链 6：40 层 Transformer（深灰大框） ================= -->
+  <rect x="854" y="116" width="240" height="110" rx="12" fill="#f8fafc" stroke="#334155" stroke-width="3.5"/>
+  <text x="974" y="146" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">40 层 Transformer</text>
+  <text x="974" y="176" text-anchor="middle" font-size="14" fill="#475569"><tspan font-size="16" font-weight="bold" fill="#334155">40</tspan> 头 × 每头 <tspan font-size="16" font-weight="bold" fill="#334155">128</tspan> 维</text>
+  <text x="974" y="202" text-anchor="middle" font-size="14" fill="#475569">每步跑 <tspan font-size="16" font-weight="bold" fill="#334155">2</tspan> 次（有条件 / 无条件）</text>
+
+  <!-- ================= 主链 7：VAE 解码 ================= -->
+  <rect x="1130" y="138" width="101" height="88" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="1180.5" y="188" text-anchor="middle" font-size="17" fill="#15803d">VAE 解码</text>
+
+  <!-- ================= 主链 8：像素视频（回到像素） ================= -->
+  <rect x="1267" y="138" width="96" height="88" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="1315" y="188" text-anchor="middle" font-size="17" fill="#1d4ed8">像素视频</text>
+  <text x="1315" y="252" text-anchor="middle" font-size="14" fill="#94a3b8">81 × 720 × 1280 × 3</text>
+
+  <!-- ================= 主链箭头（深灰） ================= -->
+  <g stroke="#334155" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M133,182 L169,182" marker-end="url(#ar-slate)"/>
+    <path d="M270,182 L306,182" marker-end="url(#ar-slate)"/>
+    <path d="M385,182 L421,182" marker-end="url(#ar-slate)"/>
+    <path d="M616,182 L652,182" marker-end="url(#ar-slate)"/>
+    <path d="M818,182 L854,182" marker-end="url(#ar-slate)"/>
+    <path d="M1094,182 L1130,182" marker-end="url(#ar-slate)"/>
+    <path d="M1231,182 L1267,182" marker-end="url(#ar-slate)"/>
+  </g>
+
+  <!-- ================= 条件路径 C：随机噪声 → 75,600 个 token（左侧） ================= -->
+  <rect x="588" y="300" width="96" height="64" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
+  <text x="636" y="338" text-anchor="middle" font-size="17" fill="#6d28d9">随机噪声</text>
+  <path d="M664,300 L664,226" stroke="#7c3aed" stroke-width="2.5" fill="none" stroke-linecap="round" marker-end="url(#ar-purple)"/>
+  <rect x="620" y="264" width="88" height="26" rx="6" fill="#ffffff"/>
+  <text x="664" y="282" text-anchor="middle" font-size="14" fill="#6d28d9">初始潜变量</text>
+
+  <!-- ================= 条件路径 A：文字 → T5 → 文本 token → Transformer ================= -->
+  <rect x="556" y="440" width="96" height="64" rx="10" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/>
+  <text x="604" y="478" text-anchor="middle" font-size="17" fill="#9a3412">文字提示</text>
+
+  <rect x="690" y="440" width="182" height="64" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="781" y="478" text-anchor="middle" font-size="17" fill="#15803d">T5 编码器（24 层）</text>
+
+  <rect x="920" y="440" width="168" height="64" rx="10" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/>
+  <text x="1004" y="478" text-anchor="middle" font-size="17" fill="#9a3412">文本 512 个 token</text>
+
+  <g stroke="#ea580c" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M652,472 L690,472" marker-end="url(#ar-orange)"/>
+    <path d="M872,472 L920,472" marker-end="url(#ar-orange)"/>
+    <path d="M1004,440 L1004,226" marker-end="url(#ar-orange)"/>
+  </g>
+  <!-- 交叉注意力 K / V 标签 -->
+  <rect x="932" y="240" width="144" height="26" rx="6" fill="#ffffff"/>
+  <text x="1004" y="258" text-anchor="middle" font-size="14" fill="#c2410c">交叉注意力的 K / V</text>
+
+  <!-- ================= 条件路径 B：时间步 t → Transformer ================= -->
+  <rect x="851" y="600" width="90" height="64" rx="10" fill="#ffedd5" stroke="#ea580c" stroke-width="2.5"/>
+  <text x="896" y="638" text-anchor="middle" font-size="17" fill="#9a3412">时间步 t</text>
+  <path d="M896,600 L896,226" stroke="#ea580c" stroke-width="2.5" fill="none" stroke-linecap="round" marker-end="url(#ar-orange)"/>
+  <rect x="816" y="386" width="160" height="26" rx="6" fill="#ffffff"/>
+  <text x="896" y="404" text-anchor="middle" font-size="14" fill="#c2410c">逐层调制（6 个向量）</text>
+
+  <!-- ================= 图例 ================= -->
+  <g font-size="14" fill="#475569">
+    <rect x="60" y="618" width="14" height="14" rx="3" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="80" y="630">像素域</text>
+    <rect x="146" y="618" width="14" height="14" rx="3" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="166" y="630">潜变量 / 噪声</text>
+    <rect x="276" y="618" width="14" height="14" rx="3" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="296" y="630">VAE / T5 编码器</text>
+    <rect x="427" y="618" width="14" height="14" rx="3" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="447" y="630">条件路径</text>
+    <rect x="527" y="618" width="14" height="14" rx="3" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="547" y="630">主干数据流</text>
+  </g>
+
+  <!-- ================= 来源 ================= -->
+  <text x="40" y="764" font-size="12" fill="#94a3b8">来源：wan/text2video.py:252-368、wan/modules/model.py:378-499</text>
+</svg>

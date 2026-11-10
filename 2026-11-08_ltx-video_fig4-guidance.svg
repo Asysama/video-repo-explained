@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="740" viewBox="0 0 1400 740" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <title>LTX-Video：引导强度与跳层强度按去噪时间分档变化</title>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <!-- ================= 标题 ================= -->
+  <text x="90" y="46" font-size="16" font-weight="bold" fill="#334155">引导强度不是常数：按去噪时间分档的 guidance_scale 与 stg_scale</text>
+
+  <!-- ================= 图例（右上角） ================= -->
+  <g>
+    <rect x="1152" y="27" width="12" height="12" rx="2" fill="#ea580c"/>
+    <text x="1172" y="39" font-size="14" fill="#334155">引导强度</text>
+    <rect x="1256" y="27" width="12" height="12" rx="2" fill="#7c3aed"/>
+    <text x="1276" y="39" font-size="14" fill="#334155">跳层强度</text>
+  </g>
+
+  <!-- ================= 绘图区：坐标轴 ================= -->
+  <!-- 纵轴（值 0..8 → y 380..110），横轴 y=380 -->
+  <line x1="90" y1="100" x2="90" y2="380" stroke="#cbd5e1" stroke-width="1.5"/>
+  <line x1="90" y1="380" x2="1300" y2="380" stroke="#94a3b8" stroke-width="1.5"/>
+
+  <!-- 纵轴刻度 -->
+  <g stroke="#cbd5e1" stroke-width="1.2">
+    <line x1="84" y1="110" x2="90" y2="110"/>
+    <line x1="84" y1="177.5" x2="90" y2="177.5"/>
+    <line x1="84" y1="245" x2="90" y2="245"/>
+    <line x1="84" y1="312.5" x2="90" y2="312.5"/>
+    <line x1="84" y1="380" x2="90" y2="380"/>
+  </g>
+  <g font-size="12" fill="#64748b" text-anchor="end">
+    <text x="78" y="114">8</text>
+    <text x="78" y="181.5">6</text>
+    <text x="78" y="249">4</text>
+    <text x="78" y="316.5">2</text>
+    <text x="78" y="384">0</text>
+  </g>
+  <text transform="translate(46,245) rotate(-90)" font-size="13" fill="#94a3b8" text-anchor="middle">强度（两线共用纵轴）</text>
+
+  <!-- ================= 绘图区：两条阶梯线之间的填充 ================= -->
+  <path d="M 90 346.25 H 450 V 177.5 H 620 V 110 H 790 V 177.5 H 960 V 346.25 H 1300 H 1130 V 312.5 H 960 V 245 H 450 V 380 H 90 Z"
+        fill="#e2e8f0" fill-opacity="0.55" stroke="none"/>
+
+  <!-- 竖向参考线（对齐下方 7 列） -->
+  <g stroke="#e2e8f0" stroke-width="1">
+    <line x1="195" y1="110" x2="195" y2="380"/>
+    <line x1="365" y1="110" x2="365" y2="380"/>
+    <line x1="535" y1="110" x2="535" y2="380"/>
+    <line x1="705" y1="110" x2="705" y2="380"/>
+    <line x1="875" y1="110" x2="875" y2="380"/>
+    <line x1="1045" y1="110" x2="1045" y2="380"/>
+    <line x1="1215" y1="110" x2="1215" y2="380"/>
+  </g>
+
+  <!-- 橙色阶梯线：guidance_scale -->
+  <path d="M 90 346.25 H 450 V 177.5 H 620 V 110 H 790 V 177.5 H 960 V 346.25 H 1300"
+        fill="none" stroke="#ea580c" stroke-width="3" stroke-linejoin="round" stroke-linecap="butt"/>
+  <!-- 紫色阶梯线：stg_scale -->
+  <path d="M 90 380 H 450 V 245 H 960 V 312.5 H 1130 V 346.25 H 1300"
+        fill="none" stroke="#7c3aed" stroke-width="3" stroke-linejoin="round" stroke-linecap="butt"/>
+
+  <!-- 取值点 -->
+  <g fill="#ea580c">
+    <circle cx="195" cy="346.25" r="4"/><circle cx="365" cy="346.25" r="4"/>
+    <circle cx="535" cy="177.5" r="4"/><circle cx="705" cy="110" r="4"/>
+    <circle cx="875" cy="177.5" r="4"/><circle cx="1045" cy="346.25" r="4"/>
+    <circle cx="1215" cy="346.25" r="4"/>
+  </g>
+  <g fill="#7c3aed">
+    <circle cx="195" cy="380" r="4"/><circle cx="365" cy="380" r="4"/>
+    <circle cx="535" cy="245" r="4"/><circle cx="705" cy="245" r="4"/>
+    <circle cx="875" cy="245" r="4"/><circle cx="1045" cy="312.5" r="4"/>
+    <circle cx="1215" cy="346.25" r="4"/>
+  </g>
+
+  <!-- guidance_scale 数值（14px 粗体 · 橙） -->
+  <g font-size="14" font-weight="bold" fill="#ea580c" text-anchor="middle">
+    <text x="195" y="336">1</text>
+    <text x="365" y="336">1</text>
+    <text x="535" y="167">6</text>
+    <text x="705" y="100">8</text>
+    <text x="875" y="167">6</text>
+    <text x="1045" y="336">1</text>
+    <text x="1215" y="336">1</text>
+  </g>
+
+  <!-- stg_scale 数值（14px 粗体 · 紫）；第 7 档两条线重合，紫色标注放在线下方 -->
+  <g font-size="14" font-weight="bold" fill="#7c3aed" text-anchor="middle">
+    <text x="195" y="370">0</text>
+    <text x="365" y="370">0</text>
+    <text x="535" y="235">4</text>
+    <text x="705" y="235">4</text>
+    <text x="875" y="235">4</text>
+    <text x="1045" y="302">2</text>
+  </g>
+  <line x1="1215" y1="350" x2="1215" y2="356" stroke="#7c3aed" stroke-width="1.2"/>
+  <text x="1215" y="370" font-size="14" font-weight="bold" fill="#7c3aed" text-anchor="middle">1</text>
+
+  <!-- ================= 横轴刻度 ================= -->
+  <g stroke="#94a3b8" stroke-width="1.5">
+    <line x1="195" y1="380" x2="195" y2="391"/>
+    <line x1="365" y1="380" x2="365" y2="391"/>
+    <line x1="535" y1="380" x2="535" y2="391"/>
+    <line x1="705" y1="380" x2="705" y2="391"/>
+    <line x1="875" y1="380" x2="875" y2="391"/>
+    <line x1="1045" y1="380" x2="1045" y2="391"/>
+    <line x1="1215" y1="380" x2="1215" y2="391"/>
+  </g>
+  <g font-size="12" fill="#64748b" text-anchor="middle">
+    <text x="195" y="410">1.0</text>
+    <text x="365" y="410">0.996</text>
+    <text x="535" y="410">0.9933</text>
+    <text x="705" y="410">0.985</text>
+    <text x="875" y="410">0.9767</text>
+    <text x="1045" y="410">0.9008</text>
+    <text x="1215" y="410">0.618</text>
+  </g>
+  <text x="695" y="436" font-size="14" fill="#475569" text-anchor="middle">去噪时间 t（从 1.0 递减到 0.618）</text>
+
+  <!-- 曲线下方说明 -->
+  <text x="695" y="466" font-size="14" fill="#64748b" text-anchor="middle">两头都关掉（=1 和 =0），最强的一段在中间</text>
+
+  <!-- ================= 下半部分：跳层表 ================= -->
+  <line x1="90" y1="490" x2="1300" y2="490" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="90" y="524" font-size="15" font-weight="bold" fill="#334155">每一步临时跳过哪些层（跳层强度生效的那些步）</text>
+
+  <!-- 档号 -->
+  <g font-size="12" fill="#64748b" text-anchor="middle">
+    <text x="195" y="558">第1档</text>
+    <text x="365" y="558">第2档</text>
+    <text x="535" y="558">第3档</text>
+    <text x="705" y="558">第4档</text>
+    <text x="875" y="558">第5档</text>
+    <text x="1045" y="558">第6档</text>
+    <text x="1215" y="558">第7档</text>
+  </g>
+
+  <!-- 跳过层号方块 -->
+  <g fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.2">
+    <rect x="128" y="570" width="134" height="64" rx="8"/>
+    <rect x="298" y="570" width="134" height="64" rx="8"/>
+    <rect x="468" y="570" width="134" height="64" rx="8"/>
+    <rect x="638" y="570" width="134" height="64" rx="8"/>
+    <rect x="808" y="570" width="134" height="64" rx="8"/>
+    <rect x="978" y="570" width="134" height="64" rx="8"/>
+    <rect x="1148" y="570" width="134" height="64" rx="8"/>
+  </g>
+  <g font-size="14" fill="#334155" text-anchor="middle">
+    <text x="195" y="608">不跳</text>
+    <text x="365" y="608">11, 25, 35, 39</text>
+    <text x="535" y="608">22, 35, 39</text>
+    <text x="705" y="608">28</text>
+    <text x="875" y="608">28</text>
+    <text x="1045" y="608">28</text>
+    <text x="1215" y="608">28</text>
+  </g>
+
+  <!-- ================= 来源 ================= -->
+  <text x="90" y="700" font-size="12" fill="#94a3b8">来源：configs/ltxv-13b-0.9.8-dev.yaml（first_pass 段）</text>
+</svg>

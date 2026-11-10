@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <defs>
+    <marker id="ar-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- ================= 标题 ================= -->
+  <text x="60" y="46" font-size="16" font-weight="bold" fill="#1e293b">一次生成要等多久？（对数刻度，单位：秒）</text>
+
+  <!-- ================= 图例（右上角） ================= -->
+  <g font-size="13" fill="#475569">
+    <rect x="990" y="28" width="10" height="10" rx="2" fill="#16a34a"/>
+    <text x="1006" y="37">Edge 4B</text>
+    <rect x="1066" y="28" width="10" height="10" rx="2" fill="#7c3aed"/>
+    <text x="1082" y="37">Nano 16B</text>
+    <rect x="1154" y="28" width="10" height="10" rx="2" fill="#ea580c"/>
+    <text x="1170" y="37">Super 64B</text>
+    <rect x="1250" y="28" width="10" height="10" rx="2" fill="#334155"/>
+    <text x="1266" y="37">端侧设备</text>
+  </g>
+
+  <!-- ================= 网格线（对数刻度：0.5 → 400） ================= -->
+  <g stroke="#e2e8f0" stroke-width="1">
+    <line x1="400.0" y1="122" x2="400.0" y2="534"/>
+    <line x1="488.1" y1="122" x2="488.1" y2="534"/>
+    <line x1="576.3" y1="122" x2="576.3" y2="534"/>
+    <line x1="692.8" y1="122" x2="692.8" y2="534"/>
+    <line x1="780.9" y1="122" x2="780.9" y2="534"/>
+    <line x1="869.1" y1="122" x2="869.1" y2="534"/>
+    <line x1="985.6" y1="122" x2="985.6" y2="534"/>
+    <line x1="1073.7" y1="122" x2="1073.7" y2="534"/>
+    <line x1="1161.9" y1="122" x2="1161.9" y2="534"/>
+    <line x1="1250.0" y1="122" x2="1250.0" y2="534"/>
+  </g>
+
+  <!-- ================= 6 根条（条长按 log10 比例） ================= -->
+  <!-- 1. Edge 4B · 256p 视频 · B200 = 1.05 -->
+  <rect x="400" y="136" width="94.34" height="30" rx="3" fill="#16a34a"/>
+  <text x="60" y="156" font-size="14" fill="#334155">Edge 4B · 256p 视频 · B200</text>
+  <text x="504.34" y="156" font-size="15" font-weight="bold" fill="#16a34a">1.05</text>
+
+  <!-- 2. Edge 4B · 480p 视频 · B200 = 7.84 -->
+  <rect x="400" y="198" width="349.99" height="30" rx="3" fill="#16a34a"/>
+  <text x="60" y="218" font-size="14" fill="#334155">Edge 4B · 480p 视频 · B200</text>
+  <text x="759.99" y="218" font-size="15" font-weight="bold" fill="#16a34a">7.84</text>
+
+  <!-- 3. Jetson Thor T2000（16GB 内存）· 端侧推理 = 8.80 -->
+  <rect x="400" y="260" width="364.68" height="30" rx="3" fill="#334155"/>
+  <text x="60" y="280" font-size="14" fill="#334155">Jetson Thor T2000（16GB 内存）· 端侧推理</text>
+  <text x="774.68" y="280" font-size="15" font-weight="bold" fill="#334155">8.80</text>
+
+  <!-- 4. Nano 16B · 720p 视频 · B200 = 49.86 -->
+  <rect x="400" y="322" width="585.23" height="30" rx="3" fill="#7c3aed"/>
+  <text x="60" y="342" font-size="14" fill="#334155">Nano 16B · 720p 视频 · B200</text>
+  <text x="995.23" y="342" font-size="15" font-weight="bold" fill="#7c3aed">49.86</text>
+
+  <!-- 5. Super 64B · 720p 视频 · B200 = 175.45 -->
+  <rect x="400" y="384" width="745.21" height="30" rx="3" fill="#ea580c"/>
+  <text x="60" y="404" font-size="14" fill="#334155">Super 64B · 720p 视频 · B200</text>
+  <text x="1155.21" y="404" font-size="15" font-weight="bold" fill="#ea580c">175.45</text>
+
+  <!-- 6. Super 64B · 720p 图生视频 · B200 = 180.21 -->
+  <rect x="400" y="492" width="748.61" height="30" rx="3" fill="#ea580c"/>
+  <text x="60" y="512" font-size="14" fill="#334155">Super 64B · 720p 图生视频 · B200</text>
+  <text x="1158.61" y="512" font-size="15" font-weight="bold" fill="#ea580c">180.21</text>
+
+  <!-- ================= 标注框 1（1.05 秒） ================= -->
+  <rect x="420" y="70" width="380" height="38" rx="7" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="610" y="94" text-anchor="middle" font-size="13" fill="#475569">4B 模型在数据中心卡上，一秒出头就能出一段 256p 视频</text>
+  <path d="M 494.34,108 L 494.34,134" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#ar-gray)"/>
+
+  <!-- ================= 标注框 2（180.21 秒） ================= -->
+  <rect x="1033.6" y="428" width="230" height="38" rx="7" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="1148.6" y="452" text-anchor="middle" font-size="13" fill="#475569">64B 模型要等三分钟上下</text>
+  <path d="M 1148.61,466 L 1148.61,490" stroke="#94a3b8" stroke-width="1.5" fill="none" marker-end="url(#ar-gray)"/>
+
+  <!-- ================= 横轴（对数） ================= -->
+  <line x1="400" y1="122" x2="400" y2="534" stroke="#cbd5e1" stroke-width="1.5"/>
+  <line x1="400" y1="534" x2="1250" y2="534" stroke="#334155" stroke-width="1.5"/>
+  <g stroke="#64748b" stroke-width="1.5">
+    <line x1="400.0" y1="534" x2="400.0" y2="542"/>
+    <line x1="488.1" y1="534" x2="488.1" y2="542"/>
+    <line x1="576.3" y1="534" x2="576.3" y2="542"/>
+    <line x1="692.8" y1="534" x2="692.8" y2="542"/>
+    <line x1="780.9" y1="534" x2="780.9" y2="542"/>
+    <line x1="869.1" y1="534" x2="869.1" y2="542"/>
+    <line x1="985.6" y1="534" x2="985.6" y2="542"/>
+    <line x1="1073.7" y1="534" x2="1073.7" y2="542"/>
+    <line x1="1161.9" y1="534" x2="1161.9" y2="542"/>
+    <line x1="1250.0" y1="534" x2="1250.0" y2="542"/>
+  </g>
+  <g font-size="12" fill="#64748b" text-anchor="middle">
+    <text x="400.0" y="559">0.5</text>
+    <text x="488.1" y="559">1</text>
+    <text x="576.3" y="559">2</text>
+    <text x="692.8" y="559">5</text>
+    <text x="780.9" y="559">10</text>
+    <text x="869.1" y="559">20</text>
+    <text x="985.6" y="559">50</text>
+    <text x="1073.7" y="559">100</text>
+    <text x="1161.9" y="559">200</text>
+    <text x="1250.0" y="559">400</text>
+  </g>
+  <text x="825" y="590" text-anchor="middle" font-size="13" fill="#475569">耗时（秒，对数刻度）</text>
+
+  <!-- ================= 来源 ================= -->
+  <text x="60" y="626" font-size="12" fill="#94a3b8">来源：docs/reference/inference_benchmarks/cosmos3-{edge,nano,super}-generator.md；端侧数据见 inference_benchmarks.md</text>
+</svg>

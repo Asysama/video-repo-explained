@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LTX-Video 完全拆解</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #fafafa;
+      padding: 2rem 1rem;
+    }
+
+    main { max-width: 1200px; margin: 0 auto; }
+
+    .mermaid { cursor: pointer; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1em; margin: 1em 0; background: #fff; position: relative; transition: box-shadow 0.2s; }
+    .mermaid:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
+    .mermaid::after { content: 'click to zoom'; position: absolute; bottom: 4px; right: 10px; font-size: 0.7em; color: #aaa; pointer-events: none; }
+
+    .mermaid-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; overflow: hidden; }
+    .mermaid-overlay .zoom-container { width: 100%; height: 100%; overflow: hidden; cursor: grab; }
+    .mermaid-overlay .zoom-container.dragging { cursor: grabbing; }
+    .mermaid-overlay .zoom-container svg { background: #fff; border-radius: 8px; padding: 1.5em; transform-origin: 0 0; position: absolute; }
+    .mermaid-overlay .zoom-hint { position: absolute; top: 16px; right: 24px; color: #ccc; font-size: 0.85em; z-index: 10000; pointer-events: none; }
+    .mermaid-overlay .zoom-controls { position: absolute; bottom: 24px; right: 24px; z-index: 10000; display: flex; gap: 8px; }
+    .mermaid-overlay .zoom-controls button { width: 40px; height: 40px; border: none; border-radius: 8px; background: rgba(255,255,255,0.9); color: #333; font-size: 1.3em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .mermaid-overlay .zoom-controls button:hover { background: #fff; }
+
+    h1, h2, h3, h4, h5, h6 { margin-top: 1.4em; margin-bottom: 0.6em; line-height: 1.3; }
+    h1 { font-size: 1.8rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3em; }
+    h2 { font-size: 1.4rem; }
+    h3 { font-size: 1.2rem; }
+
+    p { margin-bottom: 1em; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul, ol { margin: 0 0 1em 1.5em; }
+    li { margin-bottom: 0.25em; }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.9em; background: #eee; padding: 0.15em 0.35em; border-radius: 3px;
+    }
+
+    pre { background: #272822; color: #f8f8f2; padding: 1em; border-radius: 6px; overflow-x: auto; margin-bottom: 1em; }
+    pre code { background: none; padding: 0; color: inherit; font-size: 0.85em; }
+
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+    th, td { border: 1px solid #ccc; padding: 0.5em 0.75em; text-align: left; }
+    th { background: #eee; font-weight: 600; }
+
+    blockquote { border-left: 4px solid #ccc; margin: 0 0 1em 0; padding: 0.5em 1em; color: #555; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 2em 0; }
+
+    .file-list { list-style: none; margin-left: 0; }
+    .file-list li { margin-bottom: 0.5em; }
+    .file-list a { font-size: 1.1em; }
+
+    .nav { margin-bottom: 1.5em; font-size: 0.9em; }
+    .nav a { color: #666; }
+
+  </style>
+</head>
+<body>
+  <main>
+
+    
+      <h1>LTX-Video 完全拆解</h1>
+      <h1>LTX-Video (v0.9.x) 完全拆解：一个已经"退休"的 DiT 视频生成代码库，值不值得读</h1>
+<blockquote>
+<p>调研对象：<code>https://github.com/Lightricks/LTX-Video</code>（本地 checkout：<code>ltx-video/</code>）
+调研方式：<strong>离线</strong>，全部结论来自仓库文件内容与 <code>git</code> 命令输出。撰写日期：2026-11-08（Asia/Shanghai）。
+引用约定：<code>文件路径:行号</code>。仓库没写的，标注 <strong>「仓库未说明」</strong>；外部假设一律标 <strong>【推导】</strong>。</p>
+</blockquote>
+<p><img alt="图 1｜LTX-Video 的核心思路：先画小图，再放大成大片" src="2026-11-08_ltx-video_fig1-hero.svg" /></p>
+<p><strong>图 1｜LTX-Video 的多尺度流水线</strong> —— 看这里：同一个模型跑<strong>两遍</strong>。第一遍在<strong>小图</strong>上把内容画出来（快、便宜），第二遍在<strong>放大一倍</strong>的画布上精修，最后缩回目标尺寸。这就是它比"一次生成 4K"快得多的原因。</p>
+<hr />
+<h2>结论 / Conclusion</h2>
+<p><strong>这个仓库是 LTX 视频模型的 v0.9.x 一代代码，2026 年 8 月已被 LTX-2.5 取代，README 自己写着"This repository is no longer under active development"（不再积极开发）。</strong> 但它是<strong>读 DiT 视频生成代码的好教材</strong>：35 个 Python 文件、9,716 行，结构干净，没有训练代码缠在里面。</p>
+<p>三个最值得记住的点：<strong>一</strong>，它默认用<strong>两遍多尺度渲染</strong>——小图定内容、大图修细节，再插值回目标尺寸；<strong>二</strong>，它的 CFG 不是常数，而是<strong>一条按时间分档的曲线</strong>（13B dev 配置里是 <code>[1, 1, 6, 8, 6, 1, 1]</code>——<strong>后期步骤干脆把引导关掉</strong>）；<strong>三</strong>，它默认跑起来是<strong>会报错</strong>的——<code>--pipeline_config</code> 的默认值指向仓库里根本不存在的 <code>configs/ltxv-13b-0.9.7-dev.yaml</code>。</p>
+<h3>技术版 / Technical</h3>
+<ul>
+<li><strong>身份</strong>：<code>main</code> 分支，HEAD <code>50f0aef1297574a4b29acbdb874e3a363a6d5f2e</code>（2026-11-02），Apache-2.0，<strong>历史只有 1 个 commit</strong>（压平 clone）。</li>
+<li><strong>规模（实测）</strong>：79 个 tracked 文件 = <strong>35 个 <code>.py</code>（9,716 行）</strong> + 13 个 YAML（302 行）+ 1 个 README（408 行）+ <strong>25 个媒体文件（全部是 132 字节的 Git LFS 指针，真实二进制不在仓库里）</strong>。</li>
+<li><strong>2B 主干</strong>（<code>diffusers_config_mapping.py:74-105</code>）：<strong>28 层、32 头、head_dim 64 → D = 2048</strong>，<code>cross_attention_dim</code> 2048，<code>caption_channels</code> 4096，latent 通道 <strong>128</strong>。</li>
+<li><strong>2B 参数量【推导】</strong> = <strong>2,397,046,912（2.40 B）</strong>；单块 = <code>20·D² + 27·D</code> = <strong>83,941,376</strong>（自注意力 16,789,504 + 交叉注意力 16,789,504 + FFN 50,350,080 + scale_shift_table 12,288），×28 = 2.35B。名字里的 "2B" 名副其实。</li>
+<li><strong>13B 的层数/头数/宽度在本仓库内不可解</strong>——它们存在 checkpoint 的 safetensors metadata 里（<code>transformer3d.py:274-326</code>）。唯一能证明的下界是 <strong>L ≥ 43</strong>（来自 <code>skip_block_list</code> 的索引 42）。</li>
+<li><strong>VAE【推导】</strong> ≈ <strong>419,194,418</strong>（encoder 180,404,353 + decoder 238,623,356）；<strong>LatentUpsampler</strong> ≈ <strong>48,393,856</strong>。VAE 压缩：<strong>空间 32×、时间 8×</strong>，latent 通道 <strong>128</strong>。</li>
+<li><strong>默认输出</strong>：704 × 1216 × 121 帧 @ 30fps ≈ <strong>4.03 秒</strong> → latent <code>(1,128,16,22,38)</code> → <strong>13,376 个 token</strong>。</li>
+<li><strong>两遍尺寸</strong>：第一遍 800×448（<strong>5,600 token</strong>）→ 空间上采样 ×2 → 第二遍 1600×896（<strong>22,400 token</strong>）→ 双线性插值回 704×1216。</li>
+<li><strong>DiT 调用次数</strong>：13B dev <strong>27 + 13 = 40</strong>（每步 batch 1/2/3）；13B distilled <strong>7 + 3 = 10</strong>（batch 恒为 1）；2B base 40 步 × batch 3。</li>
+<li><strong>文本编码器</strong> T5-XXL（<code>PixArt-alpha/PixArt-XL-2-1024-MS</code>），256 token，caption 4096→2048，<strong>bf16 约 7 GiB——是单笔最大的显存占用项</strong>（且是冻结的）。</li>
+</ul>
+<hr />
+<h2>一、仓库地图</h2>
+<p><strong>傻瓜层：</strong> 代码分三块：<code>models/</code> 是网络（DiT + 视频 VAE），<code>pipelines/</code> 是把网络串起来的流程，<code>schedulers/</code> 是噪声调度。<code>configs/</code> 里 13 个 YAML 就是 13 种"配方"。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>顶层</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inference.py</code></td>
+<td><strong>顶层入口</strong>（薄封装）：解析参数 → 加载 pipeline → 跑 → 存 PNG/MP4</td>
+</tr>
+<tr>
+<td><code>ltx_video/inference.py</code></td>
+<td>真正的实现（635 行）：<code>InferenceConfig</code>、<code>infer()</code>、<code>create_ltx_video_pipeline()</code></td>
+</tr>
+<tr>
+<td><code>README.md</code></td>
+<td>408 行：模型表、快速开始、参数指南、ComfyUI/Diffusers 集成、News 时间线</td>
+</tr>
+<tr>
+<td><code>pyproject.toml</code></td>
+<td>依赖；<code>torch&gt;=2.1.0</code></td>
+</tr>
+<tr>
+<td><code>configs/</code></td>
+<td><strong>13 个 YAML（302 行）</strong>，见下文全表</td>
+</tr>
+<tr>
+<td><code>docs/</code></td>
+<td>23 个文件，<strong>全部是 LFS 指针</strong>（未读内容）</td>
+</tr>
+<tr>
+<td><code>tests/</code></td>
+<td>5 个 pytest 文件（config / inference / scheduler / vae）+ <code>conftest.py</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>ltx_video/</code> 核心包</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models/transformers/transformer3d.py</code>（507 行）</td>
+<td><strong><code>Transformer3DModel</code></strong>：DiT 主干、AdaLN、RoPE、patchify、skip-layer mask</td>
+</tr>
+<tr>
+<td><code>models/transformers/attention.py</code>（1,264 行）</td>
+<td><code>BasicTransformerBlock</code>、<code>Attention</code>、自注意力/交叉注意力、RoPE 施加</td>
+</tr>
+<tr>
+<td><code>models/transformers/embeddings.py</code></td>
+<td><code>PixArtAlphaTextProjection</code>（caption 4096→2048）</td>
+</tr>
+<tr>
+<td><code>models/transformers/symmetric_patchifier.py</code></td>
+<td>对称 patchify/unpatchify（patch_size=1）</td>
+</tr>
+<tr>
+<td><code>models/autoencoders/causal_video_autoencoder.py</code>（1,398 行）</td>
+<td><strong>因果视频 VAE</strong>（encoder/decoder、3D 卷积、时序因果性）</td>
+</tr>
+<tr>
+<td><code>models/autoencoders/video_autoencoder.py</code>（1,045 行）</td>
+<td>另一套 VAE 实现</td>
+</tr>
+<tr>
+<td><code>models/autoencoders/latent_upsampler.py</code></td>
+<td><strong>LatentUpsampler</strong>：latent 空间空间 ×2（PixelShuffleND(2)）</td>
+</tr>
+<tr>
+<td><code>models/autoencoders/vae.py</code> / <code>vae_encode.py</code> / <code>causal_conv3d.py</code> / <code>dual_conv3d.py</code> / <code>pixel_shuffle.py</code> / <code>pixel_norm.py</code></td>
+<td>VAE 的零件</td>
+</tr>
+<tr>
+<td><code>pipelines/pipeline_ltx_video.py</code></td>
+<td><strong><code>LTXVideoPipeline</code></strong>（base）与 <strong><code>LTXMultiScalePipeline</code></strong>（两遍）</td>
+</tr>
+<tr>
+<td><code>pipelines/crf_compressor.py</code></td>
+<td>H.264 CRF 压缩/解压（输入视频的中间格式）</td>
+</tr>
+<tr>
+<td><code>schedulers/rf.py</code></td>
+<td><strong><code>RectifiedFlowScheduler</code></strong>：Rectified Flow 调度器、SD3 式分辨率相关 shift</td>
+</tr>
+<tr>
+<td><code>utils/diffusers_config_mapping.py</code></td>
+<td><strong>关键文件</strong>：diffusers 格式的 VAE/transformer/scheduler 配置 → 本仓库配置</td>
+</tr>
+<tr>
+<td><code>utils/skip_layer_strategy.py</code></td>
+<td>STG 的四种跳过策略：<code>attention_values</code> / <code>attention_skip</code> / <code>residual</code> / <code>transformer_block</code></td>
+</tr>
+<tr>
+<td><code>utils/prompt_enhance_utils.py</code></td>
+<td>Florence-2 + Llama-3.2-3B 的提示词扩写</td>
+</tr>
+<tr>
+<td><code>utils/torch_utils.py</code></td>
+<td>随机种子等</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>二、模型变体：13 个 YAML = 13 种配方</h2>
+<p><strong>傻瓜层：</strong> 同一个网络，配方不同：有的走"一次画完"，有的走"两遍"；有的是完整版（要开引导），有的是蒸馏版（少画几步）。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>被 <code>configs/*.yaml</code> 引用、可直接跑起来的权重（12 个）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>权重</th>
+<th>config</th>
+<th>pipeline</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ltx-video-2b-v0.9.safetensors</code></td>
+<td><code>ltxv-2b-0.9.yaml</code></td>
+<td>base</td>
+<td>首发版</td>
+</tr>
+<tr>
+<td><code>ltx-video-2b-v0.9.1.safetensors</code></td>
+<td><code>ltxv-2b-0.9.1.yaml</code></td>
+<td>base</td>
+<td>加 STG/PAG、diffusers 格式、CPU offload</td>
+</tr>
+<tr>
+<td><code>ltx-video-2b-v0.9.5.safetensors</code></td>
+<td><code>ltxv-2b-0.9.5.yaml</code></td>
+<td>base</td>
+<td>关键帧/续写、更高分辨率、改进 VAE</td>
+</tr>
+<tr>
+<td><code>ltxv-2b-0.9.6-dev-04-25.safetensors</code></td>
+<td><code>ltxv-2b-0.9.6-dev.yaml</code></td>
+<td>base</td>
+<td>新默认 1216×704@30fps</td>
+</tr>
+<tr>
+<td><code>ltxv-2b-0.9.6-distilled-04-25.safetensors</code></td>
+<td><code>ltxv-2b-0.9.6-distilled.yaml</code></td>
+<td>base</td>
+<td>蒸馏版：8 步、无 CFG/STG、<strong>stochastic_sampling=true</strong></td>
+</tr>
+<tr>
+<td><code>ltxv-2b-0.9.8-distilled.safetensors</code></td>
+<td><code>ltxv-2b-0.9.8-distilled.yaml</code></td>
+<td>multi-scale</td>
+<td>蒸馏 + 多尺度</td>
+</tr>
+<tr>
+<td><code>ltxv-2b-0.9.8-distilled-fp8.safetensors</code></td>
+<td><code>ltxv-2b-0.9.8-distilled-fp8.yaml</code></td>
+<td>multi-scale</td>
+<td>FP8</td>
+</tr>
+<tr>
+<td><code>ltxv-13b-0.9.8-dev.safetensors</code></td>
+<td><code>ltxv-13b-0.9.8-dev.yaml</code></td>
+<td>multi-scale</td>
+<td>最高质量；README 称可生成 <strong>60 秒</strong></td>
+</tr>
+<tr>
+<td><code>ltxv-13b-0.9.8-dev-fp8.safetensors</code></td>
+<td><code>ltxv-13b-0.9.8-dev-fp8.yaml</code></td>
+<td>multi-scale</td>
+<td>FP8</td>
+</tr>
+<tr>
+<td><code>ltxv-13b-0.9.8-distilled.safetensors</code></td>
+<td><code>ltxv-13b-0.9.8-distilled.yaml</code></td>
+<td>multi-scale</td>
+<td>蒸馏；含 <code>tone_map_compression_ratio: 0.6</code></td>
+</tr>
+<tr>
+<td><code>ltxv-13b-0.9.8-distilled-fp8.safetensors</code></td>
+<td><code>ltxv-13b-0.9.8-distilled-fp8.yaml</code></td>
+<td>multi-scale</td>
+<td>FP8</td>
+</tr>
+<tr>
+<td><code>ltxv-spatial-upscaler-0.9.8.safetensors</code></td>
+<td>全部 6 个 multi-scale config</td>
+<td>—</td>
+<td><strong>空间上采样器，multi-scale 必需</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>README 提到、但仓库内没有任何代码路径的</strong>（只能去 ComfyUI / diffusers 用）：<code>ltxv-13b-0.9.7-*</code> 全系、<strong><code>ltxv-13b-0.9.7-distilled-lora128</code></strong>（"只要 1GB 显存"）、<strong><code>ltxv-temporal-upscaler-0.9.7</code></strong>（时间上采样器——本仓库<strong>只做空间上采样</strong>）、<code>ltxv-13b-0.9.8-mix</code>（README 的 <code>inference.py config</code> 一栏写 <strong>N/A</strong>）、以及 4 个 <strong>IC-LoRA</strong>（detailer / depth / pose / canny）。</p>
+<p><strong>每个变体改变了什么</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>变体</th>
+<th>改变的东西</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dev（非蒸馏）</td>
+<td>需要 CFG（<code>guidance_scale</code> 6/8/6）+ STG（4/4/4/2/1）+ CFG*；30 步 × 2 遍</td>
+</tr>
+<tr>
+<td>distilled</td>
+<td><strong>不需要 CFG/STG</strong>（gs=1, stg=0），固定 7+3 个 timestep；13B distilled 另加 <code>tone_map_compression_ratio: 0.6</code></td>
+</tr>
+<tr>
+<td>fp8</td>
+<td><strong>只改</strong> <code>precision: float8_e4m3fn</code>，其余与同名非 fp8 配置<strong>逐字相同</strong>；依赖外部包 <code>q8_kernels</code>（<code>LTXVideo-Q8-Kernels</code>），未装则直接 <code>raise ValueError("Q8-Kernels not found...")</code>（<code>ltx_video/inference.py:185-200</code>）</td>
+</tr>
+<tr>
+<td>spatial upscaler</td>
+<td><code>LatentUpsampler</code>：latent 空间 ×2（PixelShuffleND(2)），48.4M 参数</td>
+</tr>
+</tbody>
+</table>
+<p><strong>完整配置表（13 个 YAML 的关键项）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>键</th>
+<th>13B dev（0.9.8）</th>
+<th>13B distilled</th>
+<th>2B distilled（0.9.8）</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pipeline_type</code></td>
+<td><code>multi-scale</code></td>
+<td><code>multi-scale</code></td>
+<td><code>multi-scale</code></td>
+<td>base 流水线则不需要 upscaler</td>
+</tr>
+<tr>
+<td><code>checkpoint_path</code></td>
+<td><code>ltxv-13b-0.9.8-dev.safetensors</code></td>
+<td><code>…-distilled…</code></td>
+<td><code>ltxv-2b-0.9.8-distilled…</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>downscale_factor</code></td>
+<td><code>0.6666666</code></td>
+<td>同</td>
+<td>同</td>
+<td>第一遍的缩小比例</td>
+</tr>
+<tr>
+<td><code>spatial_upscaler_model_path</code></td>
+<td><code>ltxv-spatial-upscaler-0.9.8.safetensors</code></td>
+<td>同</td>
+<td>同</td>
+<td></td>
+</tr>
+<tr>
+<td><code>stg_mode</code></td>
+<td><code>attention_values</code></td>
+<td>同</td>
+<td>同</td>
+<td>另有 <code>attention_skip</code> / <code>residual</code> / <code>transformer_block</code></td>
+</tr>
+<tr>
+<td><code>decode_timestep</code></td>
+<td><code>0.05</code></td>
+<td>同</td>
+<td>同</td>
+<td><strong>仅当 VAE 有 <code>timestep_conditioning</code> 才生效</strong>（见坑）</td>
+</tr>
+<tr>
+<td><code>decode_noise_scale</code></td>
+<td><code>0.025</code></td>
+<td>同</td>
+<td>同</td>
+<td></td>
+</tr>
+<tr>
+<td><code>text_encoder_model_name_or_path</code></td>
+<td><code>PixArt-alpha/PixArt-XL-2-1024-MS</code></td>
+<td>同</td>
+<td>同</td>
+<td>T5-XXL</td>
+</tr>
+<tr>
+<td><code>precision</code></td>
+<td><code>bfloat16</code></td>
+<td>同</td>
+<td>同</td>
+<td>或 <code>float8_e4m3fn</code></td>
+</tr>
+<tr>
+<td><code>sampler</code></td>
+<td><code>from_checkpoint</code></td>
+<td>同</td>
+<td>同</td>
+<td>另有 <code>uniform</code> / <code>linear-quadratic</code></td>
+</tr>
+<tr>
+<td><code>stochastic_sampling</code></td>
+<td><code>false</code></td>
+<td>同</td>
+<td>同</td>
+<td>2B 0.9.6 distilled 是 <code>true</code></td>
+</tr>
+<tr>
+<td><code>prompt_enhancer_image_caption_model_name_or_path</code></td>
+<td><code>MiaoshouAI/Florence-2-large-PromptGen-v2.0</code></td>
+<td>同</td>
+<td>同</td>
+<td></td>
+</tr>
+<tr>
+<td><code>prompt_enhancer_llm_model_name_or_path</code></td>
+<td><code>unsloth/Llama-3.2-3B-Instruct</code></td>
+<td>同</td>
+<td>同</td>
+<td></td>
+</tr>
+<tr>
+<td><code>first_pass.num_inference_steps</code></td>
+<td><code>30</code>（<code>skip_final_inference_steps: 3</code>）</td>
+<td>固定 timestep 表 7 个</td>
+<td>固定 7 个</td>
+<td></td>
+</tr>
+<tr>
+<td><code>first_pass.guidance_scale</code></td>
+<td><code>[1, 1, 6, 8, 6, 1, 1]</code></td>
+<td><code>1</code></td>
+<td><code>1</code></td>
+<td><strong>7 档时间分桶</strong></td>
+</tr>
+<tr>
+<td><code>first_pass.stg_scale</code></td>
+<td><code>[0, 0, 4, 4, 4, 2, 1]</code></td>
+<td><code>0</code></td>
+<td><code>0</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>first_pass.rescaling_scale</code></td>
+<td><code>[1, 1, 0.5, 0.5, 1, 1, 1]</code></td>
+<td><code>1</code></td>
+<td><code>1</code></td>
+<td>CFG* 重缩放</td>
+</tr>
+<tr>
+<td><code>first_pass.guidance_timesteps</code></td>
+<td><code>[1.0, 0.996, 0.9933, 0.9850, 0.9767, 0.9008, 0.6180]</code></td>
+<td>—</td>
+<td>—</td>
+<td>每档的时间点</td>
+</tr>
+<tr>
+<td><code>first_pass.skip_block_list</code></td>
+<td><code>[[], [11,25,35,39], [22,35,39], [28], [28], [28], [28]]</code></td>
+<td><code>[42]</code></td>
+<td><code>[42]</code></td>
+<td><strong>每一步要跳过的 block</strong>（STG）</td>
+</tr>
+<tr>
+<td><code>first_pass.cfg_star_rescale</code></td>
+<td><code>true</code></td>
+<td>—</td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td><code>second_pass.num_inference_steps</code></td>
+<td><code>30</code>（<code>skip_initial_inference_steps: 17</code>）</td>
+<td>3 个</td>
+<td>3 个</td>
+<td></td>
+</tr>
+<tr>
+<td><code>second_pass.guidance_scale</code></td>
+<td><code>[1]</code></td>
+<td><code>[1]</code></td>
+<td><code>[1]</code></td>
+<td>第二遍<strong>不开</strong> CFG</td>
+</tr>
+<tr>
+<td><code>second_pass.skip_block_list</code></td>
+<td><code>[27]</code></td>
+<td><code>[42]</code></td>
+<td><code>[42]</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>三、架构：DiT 主干</h2>
+<p><strong>傻瓜层：</strong> 每个 block 做三件事：先自己看自己、再听文本、最后过一遍前馈；时间和文本以"六个旋钮"的形式插进来。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>符号表</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>符号</th>
+<th>含义</th>
+<th>取值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>F_l</code></td>
+<td>latent 帧数</td>
+<td><code>num_frames // 8 + 1</code>（<strong>因果 VAE 多 1 帧</strong>）</td>
+</tr>
+<tr>
+<td><code>H_l, W_l</code></td>
+<td>latent 高宽</td>
+<td><code>H // 32</code>, <code>W // 32</code></td>
+</tr>
+<tr>
+<td><code>C</code></td>
+<td>latent 通道</td>
+<td><strong>128</strong></td>
+</tr>
+<tr>
+<td><code>p</code></td>
+<td>DiT patch size</td>
+<td><strong>1</strong>（<code>SymmetricPatchifier(patch_size=1)</code>，patchify 是纯 reshape）</td>
+</tr>
+<tr>
+<td><code>D</code></td>
+<td>hidden dim</td>
+<td><code>num_attention_heads × attention_head_dim</code>；2B = 32×64 = <strong>2048</strong></td>
+</tr>
+<tr>
+<td><code>L</code></td>
+<td>block 数</td>
+<td>2B = <strong>28</strong>；13B <strong>≥ 43</strong></td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>文本 token 数</td>
+<td><strong>256</strong></td>
+</tr>
+<tr>
+<td><code>C_txt</code></td>
+<td>文本嵌入维度</td>
+<td><strong>4096</strong>（T5-XXL 的 d_model）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>执行顺序</strong>（<code>Transformer3DModel.forward</code>，<code>transformer3d.py:330-507</code>）：</p>
+<pre><code>1. hidden_states = patchify_proj(hidden_states)          # Linear(128 → D)   :416
+2. timestep *= timestep_scale_multiplier (1000)                             :418-419
+3. freqs_cis = precompute_freqs_cis(indices_grid)        # RoPE cos/sin       :421
+4. timestep, embedded_timestep = adaln_single(timestep, {...})              :424-434
+5. encoder_hidden_states = caption_projection(encoder_hidden_states)        :437-442
+6. for block in transformer_blocks: hidden_states = block(...)              :444-493
+7. shift, scale = scale_shift_table + embedded_timestep                     :496-500
+8. hidden_states = norm_out(hidden_states) * (1 + scale) + shift            :502
+9. hidden_states = proj_out(hidden_states)                # Linear(D → 128)   :503
+</code></pre>
+<p><strong>Block 内部</strong>（<code>BasicTransformerBlock.forward</code>，<code>attention.py:198-322</code>）——标准的 <strong>AdaLN-Zero</strong>：</p>
+<pre><code>a. norm1(hidden_states)                        # RMSNorm（无仿射参数）        :227
+b. shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = ...      :231-238
+   norm_hidden_states = norm * (1 + scale_msa) + shift_msa                    :239
+c. attn_output = attn1(norm, freqs_cis, ...)   # 自注意力 + RoPE              :264-272
+d. attn_output = gate_msa * attn_output                                     :273-274
+e. hidden_states = attn_output + hidden_states                              :275
+f. attn_output = attn2(hidden_states, encoder_hidden_states=...)  # 交叉注意力 :284-291
+   hidden_states = attn_output + hidden_states                              :292
+g. norm2 → norm * (1 + scale_mlp) + shift_mlp                              :295-296
+h. ff_output = ff(norm)   # FeedForward，gelu-approximate                  :303-311
+i. ff_output = gate_mlp * ff_output; hidden_states = ff_output + hidden      :312-314
+</code></pre>
+<blockquote>
+<p><strong>注意</strong>：block 里<strong>没有 norm3</strong>，只有 <code>norm1</code>（自注意力前）与 <code>norm2</code>（FF 前）两次归一化；6 组调制向量由 <code>adaln_single</code> 一次性算出。</p>
+</blockquote>
+<p><strong>单块参数（2B，D=2048）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>子模块</th>
+<th>类型</th>
+<th style="text-align: right;">参数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>norm1</code></td>
+<td><code>RMSNorm(D)</code>，<code>elementwise_affine=False</code></td>
+<td style="text-align: right;"><strong>0</strong></td>
+</tr>
+<tr>
+<td><code>attn1</code></td>
+<td>自注意力（q/k/v/o 各 Linear(2048,2048) + q_norm/k_norm RMSNorm）</td>
+<td style="text-align: right;">16,789,504</td>
+</tr>
+<tr>
+<td><code>attn2</code></td>
+<td>交叉注意力（K/V 输入是 <code>cross_attention_dim=2048</code> 的文本特征）</td>
+<td style="text-align: right;">16,789,504</td>
+</tr>
+<tr>
+<td><code>norm2</code></td>
+<td><code>RMSNorm(D)</code>，无仿射</td>
+<td style="text-align: right;"><strong>0</strong></td>
+</tr>
+<tr>
+<td><code>ff</code></td>
+<td><code>FeedForward</code>，<code>inner_dim = 4×2048 = 8192</code></td>
+<td style="text-align: right;">50,350,080</td>
+</tr>
+<tr>
+<td><code>scale_shift_table</code></td>
+<td><code>randn(6, D)/D**0.5</code></td>
+<td style="text-align: right;">12,288</td>
+</tr>
+<tr>
+<td><strong>单块合计</strong></td>
+<td></td>
+<td style="text-align: right;"><strong>83,941,376</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>位置编码：RoPE（不是 sin-cos）</strong>（<code>transformer3d.py:204-257</code>）：</p>
+<ul>
+<li><code>rope_theta = 10000</code>，<code>positional_embedding_max_pos = [20, 2048, 2048]</code>（时间/高/宽）</li>
+<li><code>precompute_freqs_cis</code> → 复数频率 <code>(B, N, 1023)</code> → cos/sin <code>(B, N, 2048)</code></li>
+<li><strong>只作用于自注意力</strong>，<strong>交叉注意力不加位置编码</strong></li>
+<li><code>get_fractional_positions</code> 把整数网格变成带小数的连续位置</li>
+</ul>
+<p><strong>时间步条件（AdaLN）</strong>：</p>
+<ul>
+<li><code>adaln_single.linear = Linear(inner_dim, 4 * inner_dim)</code> → 配合 <code>scale_shift_table</code> 得到 <strong>6 组</strong>（shift/scale/gate × msa/mlp）</li>
+<li><code>timestep_scale_multiplier = 1000</code>（所以 t 是 0~1 之间的比例，乘 1000 后进 sinusoidal embedding）</li>
+<li><code>scale_shift_table = nn.Parameter(randn(6, inner_dim) / inner_dim**0.5)</code></li>
+</ul>
+<p><strong>文本条件</strong>：<code>caption_projection</code> = <code>PixArtAlphaTextProjection</code>（4096 → 2048）；交叉注意力的 K/V 来自文本、Q 来自视频 token。</p>
+<p><strong>视频 VAE</strong>（<code>causal_video_autoencoder.py:208-241</code>）：<strong>空间 32×、时间 8×</strong>，latent 通道 128；<strong>因果卷积</strong>（<code>CausalConv3d</code> 时间维只左 padding）→ 帧数关系是 <code>1 + 8×(F_l − 1)</code>，<strong>首帧只占 1 个像素帧</strong>。</p>
+<p><strong>噪声调度器</strong>（<code>schedulers/rf.py</code>）：<code>RectifiedFlowScheduler</code>，<code>order=1</code>，<code>init_noise_sigma=1.0</code>，<code>scale_model_input</code> 是恒等。</p>
+<ul>
+<li>三种采样表：<code>Uniform</code>（linspace）、<code>LinearQuadratic</code>、<code>Constant</code>（需给 shift）；所有 config 都用 <code>from_checkpoint</code></li>
+<li><strong>SD3 式分辨率相关 shift</strong>：<code>get_normal_shift(m)</code>（<code>m = prod(latent_shape[2:])</code>，即 <strong>latent 体积</strong>的立方近似）在 <code>min_shift=0.95 / max_shift=2.05 / min_tokens=1024 / max_tokens=4096</code> 上线性插值，再用 <code>strech_shifts_to_terminal(shifts, terminal=0.1)</code> 把末端拉到 0.1</li>
+<li><code>step()</code>：确定性时 <code>prev = sample - dt * model_output</code>；<code>stochastic_sampling=True</code> 时先估 x0 再 <code>add_noise</code>（<code>alphas = 1 - sigmas</code>）</li>
+</ul>
+<p><strong>LoRA</strong>：仓库<strong>没有</strong>加载 LoRA 的接口，但<strong>结构上兼容 diffusers LoRA</strong>（<code>LoRACompatibleLinear</code>、<code>LoRAAttnProcessor2_0</code> 等，注释写着 "It should be deleted once the integration with PEFT is completed"）。所以 <code>ltxv-13b-0.9.7-distilled-lora128</code> 必须<strong>借 ComfyUI/diffusers 侧加载</strong>，本仓库 <code>inference.py</code> 里 <code>--lora</code> 参数都没有。</p>
+<hr />
+<h2>四、端到端形状</h2>
+<p><strong>傻瓜层：</strong> 121 帧的视频进 VAE 被压成 16×22×38 的小网格，再拉平成 13,376 个"小方块"，每个方块是一个 2048 维的向量（13B 则更宽）。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>A. base pipeline（2B / 0.9.x 用）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>形状</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>输入像素</td>
+<td><code>(1, 3, 121, 704, 1216)</code></td>
+</tr>
+<tr>
+<td>VAE encode（i2v 时）</td>
+<td><code>(1, 128, 16, 22, 38)</code>（<code>121//8+1=16</code>, <code>704//32=22</code>, <code>1216//32=38</code>）</td>
+</tr>
+<tr>
+<td><code>prepare_latents</code> 的噪声</td>
+<td>先 <code>(1, F·H·W, C) = (1, 13376, 128)</code> 再 rearrange 回 <code>(1,128,16,22,38)</code></td>
+</tr>
+<tr>
+<td>patchify（p=1）</td>
+<td><code>(1, 13376, 128)</code> → token 数 = 16×22×38 = <strong>13,376</strong></td>
+</tr>
+<tr>
+<td><code>patchify_proj</code></td>
+<td><code>(1, 13376, 2048)</code>（2B）</td>
+</tr>
+<tr>
+<td>文本</td>
+<td><code>(1, 256, 4096)</code> → caption_projection → <code>(1, 256, 2048)</code></td>
+</tr>
+<tr>
+<td>每个 block 的自注意力</td>
+<td>q/k/v <code>(1, 32, 13376, 64)</code> → SDPA → <code>(1,13376,2048)</code></td>
+</tr>
+<tr>
+<td>每个 block 的交叉注意力</td>
+<td>q <code>(1,32,13376,64)</code>，k/v <code>(1,32,256,64)</code></td>
+</tr>
+<tr>
+<td><code>proj_out</code></td>
+<td><code>(1, 13376, 128)</code> → unpatchify → <code>(1, 128, 16, 22, 38)</code></td>
+</tr>
+<tr>
+<td>VAE decode</td>
+<td><code>target_shape = (1, 3, 128, 704, 1216)</code>，最后裁到 <code>(1,3,121,704,1216)</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>B. multi-scale pipeline（13B 0.9.8 用）</strong>：</p>
+<pre><code>downscale_factor = 0.6666666
+x_width  = int(1216 × 0.6666666) = 810 → 对齐 32 → 800
+x_height = int(704  × 0.6666666) = 469 → 对齐 32 → 448
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>遍</th>
+<th>分辨率</th>
+<th>latent</th>
+<th>token 数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第一遍</td>
+<td>800 × 448</td>
+<td><code>(1,128,16,14,25)</code></td>
+<td><strong>5,600</strong></td>
+</tr>
+<tr>
+<td>LatentUpsampler（空间 ×2）</td>
+<td>—</td>
+<td><code>(1,128,16,28,50)</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>第二遍</td>
+<td>1600 × 896</td>
+<td><code>(1,128,16,28,50)</code></td>
+<td><strong>22,400</strong></td>
+</tr>
+<tr>
+<td>输出</td>
+<td>双线性插值回 704×1216</td>
+<td><code>(1,3,121,704,1216)</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>第二遍是在<strong>比目标大 1.5 倍</strong>的画布上做去噪，最后用 <code>F.interpolate(..., mode="bilinear")</code> 缩回目标尺寸。<strong>时间维完全不上采样</strong>（LatentUpsampler 只做空间 ×2）。</p>
+</blockquote>
+<p><img alt="图 2｜两遍多尺度：形状如何变化" src="2026-11-08_ltx-video_fig2-multiscale.svg" /></p>
+<p><strong>图 2｜多尺度两遍的形状变化</strong> —— 看这里：像素 <strong>121×704×1216</strong> 被压成 <strong>16×22×38</strong> 的潜变量（13,376 个 token）；第一遍先在 <strong>800×448</strong> 上画（5,600 token），上采样器把它放大一倍，第二遍在 <strong>1600×896</strong> 上画（22,400 token），最后插值回 <strong>704×1216</strong>。</p>
+<hr />
+<h2>五、推理流程与「缓存 vs 重算」</h2>
+<p><strong>傻瓜层：</strong> 文字只读一次；真正每步重算的，是位置编码表和文本投影——每一步都重来一遍。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>顶层 <code>infer()</code></strong>（<code>ltx_video/inference.py:389-635</code>）：</p>
+<pre><code>1. load_pipeline_config(path)                                    # yaml.safe_load
+2. 解析 checkpoint_path；本地没有 → hf_hub_download(&quot;Lightricks/LTX-Video&quot;, filename)
+3. 同样解析 spatial_upscaler_model_path
+4. 校验 conditioning：paths/strengths/start_frames 长度一致、strength∈[0,1]、start∈[0,num_frames)
+5. seed_everething(seed)
+6. offload_to_cpu = config.offload_to_cpu and get_total_gpu_memory() &lt; 30 GB
+7. **padding**：height_padded = ((h-1)//32+1)*32, width_padded = ((w-1)//32+1)*32,
+                num_frames_padded = ((n-2)//8+1)*8+1
+8. get_device() → cuda / mps / cpu
+9. enhance_prompt = (词数 &lt; 120)
+10. create_ltx_video_pipeline(...)   # VAE / transformer / scheduler / T5 / patchifier / 可选 Florence+Llama
+11. pipeline_type == &quot;multi-scale&quot; → 包成 LTXMultiScalePipeline(pipeline, LatentUpsampler)
+12. load_media_file → media_item
+13. prepare_conditioning → List[ConditioningItem]
+14. stg_mode → SkipLayerStrategy
+15. pipeline(**pipeline_config, ...) → images
+16. 裁掉 padding：images[:, :, :num_frames, pad_top:pad_bottom, pad_left:pad_right]
+17. 写 PNG（单帧）或 MP4（imageio，fps=frame_rate）
+</code></pre>
+<p><strong>「缓存 vs 重算」对照表</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>频率</th>
+<th>位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>T5 文本编码（正/负 prompt）</td>
+<td><strong>每次推理 1 次</strong>（正负各一次）</td>
+<td><code>pipeline_ltx_video.py:1028-1043</code></td>
+</tr>
+<tr>
+<td>Prompt 增强（Florence-2 + Llama）</td>
+<td>每次推理 1 次</td>
+<td><code>:1007-1026</code></td>
+</tr>
+<tr>
+<td><code>adaln_single</code> 的 timestep embedding</td>
+<td><strong>每个去噪步 1 次</strong></td>
+<td><code>transformer3d.py:424-434</code></td>
+</tr>
+<tr>
+<td><strong>RoPE <code>freqs_cis</code></strong></td>
+<td><strong>每个去噪步 1 次（每次 forward 都重算）</strong></td>
+<td><code>transformer3d.py:421</code></td>
+</tr>
+<tr>
+<td><strong><code>caption_projection</code></strong></td>
+<td><strong>每个去噪步 1 次</strong>（在 block 循环之前）</td>
+<td><code>transformer3d.py:437-442</code></td>
+</tr>
+<tr>
+<td>Transformer block</td>
+<td>每步 1 次，<strong>batch = num_conds</strong></td>
+<td><code>transformer3d.py:444-493</code></td>
+</tr>
+<tr>
+<td>VAE encode（conditioning media）</td>
+<td>每个 conditioning item 1 次</td>
+<td><code>pipeline_ltx_video.py:1459-1466</code></td>
+</tr>
+<tr>
+<td>VAE decode</td>
+<td>每次推理 1 次（multi-scale 下<strong>第二遍才解码</strong>）</td>
+<td><code>pipeline_ltx_video.py:1330-1334</code></td>
+</tr>
+<tr>
+<td>LatentUpsampler + AdaIN 统计对齐</td>
+<td>multi-scale 下各 1 次</td>
+<td><code>pipeline_ltx_video.py:1868-1869</code></td>
+</tr>
+<tr>
+<td><code>scheduler.step()</code></td>
+<td>每步 1 次</td>
+<td><code>pipeline_ltx_video.py:1273-1281</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>每步的 batch 是多少（<code>num_conds = 1 + (CFG?1:0) + (STG?1:0)</code>）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>首遍步数</th>
+<th>次遍步数</th>
+<th>每步 batch</th>
+<th>DiT 总调用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ltxv-13b-0.9.8-dev</code></td>
+<td>30 − 3 = <strong>27</strong></td>
+<td>30 − 17 = <strong>13</strong></td>
+<td>1（gs=1）→ 3（gs=6/8/6 且 stg=4）→ 2（gs=1, stg=2/1）</td>
+<td><strong>40</strong></td>
+</tr>
+<tr>
+<td><code>ltxv-13b-0.9.8-distilled</code></td>
+<td><strong>7</strong></td>
+<td><strong>3</strong></td>
+<td>恒为 <strong>1</strong></td>
+<td><strong>10</strong></td>
+</tr>
+<tr>
+<td><code>ltxv-2b-0.9.8-distilled</code></td>
+<td><strong>7</strong></td>
+<td><strong>3</strong></td>
+<td>1</td>
+<td><strong>10</strong></td>
+</tr>
+<tr>
+<td><code>ltxv-2b-0.9.6-distilled</code>（base）</td>
+<td><strong>8</strong></td>
+<td>—</td>
+<td>1</td>
+<td>8</td>
+</tr>
+<tr>
+<td><code>ltxv-2b-0.9.x</code>（base）</td>
+<td><strong>40</strong></td>
+<td>—</td>
+<td><strong>3</strong></td>
+<td>40（batch=3）</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="图 3｜不同配置的步数与每步 batch" src="2026-11-08_ltx-video_fig3-steps.svg" /></p>
+<p><strong>图 3｜「多少步 × 每步几份」才是真正的算力账</strong> —— 看这里：13B dev 走 27+13 步，但<strong>中间几步的 batch 是 3</strong>（条件 + 无条件 + STG 三份一起算），所以总 DiT 调用是 40 次；蒸馏版只要 7+3 步、每步 batch 恒为 1，总共 10 次——<strong>快 4 倍</strong>。</p>
+<p><strong>关键帧 / 视频续写 / 条件路径</strong>：</p>
+<ul>
+<li>条件项：<code>ConditioningItem(media_item(b,3,f,h,w), media_frame_number, conditioning_strength, media_x, media_y)</code></li>
+<li><strong>首帧/首段</strong>（<code>media_frame_number == 0</code>）：VAE 编码后的 latent 用 <code>torch.lerp(init_latents, media_latents, strength)</code> 直接写进初始噪声对应区域，并写 <code>conditioning_mask</code>；<code>_get_latent_spatial_position</code> 会<strong>剥掉不对齐的边缘 latent</strong>（<code>strip_latent_border</code>），因为边缘 latent 分布不同会误导模型</li>
+<li><strong>非首段</strong>（<code>media_frame_number &gt; 0</code>）：<code>assert media_frame_number % 8 == 0</code>；序列前 <code>num_prefix_latent_frames=2</code> 个 latent 单独处理，<code>prefix_latents_mode="concat"</code>（默认）把它们当额外 token 拼在前面；也支持 <code>"soft"</code>（强度默认 0.15）与 <code>"drop"</code></li>
+<li><strong>单帧条件</strong>：编码后与随机噪声 <code>torch.lerp(noise, media_latents, strength)</code> 混合，patchify 成<strong>额外 token</strong> 拼在序列最前，解码前切掉（<code>latents[:, num_cond_latents:]</code>）</li>
+<li><strong>去噪时序控制</strong>：<code>current_timestep = min(t, 1 - conditioning_mask)</code>；不满足 <code>tokens_to_denoise_mask</code> 的 token 保持原值不被去噪</li>
+<li><strong>图像条件的额外噪声</strong>：<code>add_noise_to_image_conditioning_latents</code> 给硬条件 latent 加 <code>noise_scale * t² * noise</code>（CLI 默认 <code>image_cond_noise_scale = 0.15</code>）</li>
+<li><strong>视频续写</strong>：README 要求输入片段帧数是 <strong>8 的倍数 + 1</strong>（9、17、25…），代码里对应 <code>assert n_frames % 8 == 1</code></li>
+</ul>
+<p><img alt="图 4｜CFG 与 STG 随时间变化的分档曲线" src="2026-11-08_ltx-video_fig4-guidance.svg" /></p>
+<p><strong>图 4｜13B dev 的引导强度不是常数，而是一条分档曲线</strong> —— 看这里：橙色是 <code>guidance_scale</code> 的 7 个档 <code>[1, 1, 6, 8, 6, 1, 1]</code>，紫色是 <code>stg_scale</code> <code>[0, 0, 4, 4, 4, 2, 1]</code>。<strong>开头和结尾的引导都是 1（等于关掉）</strong>，最强的一段在中间；下面的灰字是每一步要跳过的 block 编号——<strong>STG 靠"临时跳过某些层"来改风格</strong>。</p>
+<hr />
+<h2>六、参数与显存</h2>
+<p><strong>傻瓜层：</strong> 2B 的 24 亿参数几乎全在 28 个一模一样的 block 里；VAE 约 4.2 亿；文本编码器（T5-XXL）比整个主干还大。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>2B 主干【推导】</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>部分</th>
+<th>公式</th>
+<th style="text-align: right;">参数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>28 个 block</td>
+<td>28 × 83,941,376</td>
+<td style="text-align: right;">2,350,358,528</td>
+</tr>
+<tr>
+<td><code>patchify_proj</code></td>
+<td>128 × 2048 + 2048</td>
+<td style="text-align: right;">264,192</td>
+</tr>
+<tr>
+<td><code>proj_out</code></td>
+<td>2048 × 128 + 128</td>
+<td style="text-align: right;">262,272</td>
+</tr>
+<tr>
+<td><code>caption_projection</code></td>
+<td>4096×2048 + 2048×2048 (+norm)</td>
+<td style="text-align: right;">≈ 12,600,000</td>
+</tr>
+<tr>
+<td><code>adaln_single</code></td>
+<td>2048×8192 + 8192</td>
+<td style="text-align: right;">16,777,216</td>
+</tr>
+<tr>
+<td><code>scale_shift_table</code></td>
+<td>6 × 2048</td>
+<td style="text-align: right;">12,288</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td></td>
+<td style="text-align: right;"><strong>≈ 2,397,046,912（2.40 B）</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>其他组件【推导】</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th style="text-align: right;">参数量</th>
+<th>依据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>视频 VAE</td>
+<td style="text-align: right;"><strong>419,194,418</strong>（encoder 180,404,353 + decoder 238,623,356）</td>
+<td><code>OURS_VAE_CONFIG</code></td>
+</tr>
+<tr>
+<td>LatentUpsampler</td>
+<td style="text-align: right;"><strong>48,393,856</strong></td>
+<td><code>latent_upsampler.py</code></td>
+</tr>
+<tr>
+<td>T5-XXL 文本编码器</td>
+<td style="text-align: right;">≈ <strong>3.76 B</strong>【外部假设】</td>
+<td>d_model 4096、d_ff 10240、24 层、vocab 32128</td>
+</tr>
+</tbody>
+</table>
+<p><strong>显存</strong>：README 声称 13B 蒸馏版在 H100 上 <strong>10 秒</strong>出 HD 视频、<strong>3 秒</strong>出低清预览；FP8 量化版"显存更少"。<strong>T5-XXL 在 bf16 下约 7 GiB，是单笔最大占用</strong>（且推理时被 offload 到 CPU）。</p>
+<p><strong>13B 的精确参数量</strong>：仓库内不可解，只能给闭式公式与外插——<code>transformer3d.py</code> 的 <code>from_pretrained</code> 从 checkpoint 的 safetensors metadata 读 <code>configs["transformer"]</code>。</p>
+<hr />
+<h2>七、训练：本仓库零训练代码</h2>
+<p><strong>傻瓜层：</strong> 只有一个梯度检查点的开关和几个噪声注入钩子，训练在另一个仓库。</p>
+<h3>技术版 / Technical</h3>
+<ul>
+<li>仓库里<strong>没有 optimizer / dataset / trainer / loss</strong></li>
+<li>只残留两个训练相关钩子：<code>BasicTransformerBlock</code> 的 <code>_set_gradient_checkpointing</code>、以及 <code>add_noise_to_image_conditioning_latents</code> 里的噪声注入</li>
+<li>训练代码在独立仓库 <strong>Lightricks/LTX-Video-Trainer</strong></li>
+<li><strong>LoRA 训练脚本、量化脚本、TensorRT/ONNX 导出：都没有</strong></li>
+</ul>
+<hr />
+<h2>八、怎么跑</h2>
+<pre><code class="language-bash"># 安装
+pip install -e &quot;.[inference]&quot;      # 额外：imageio[ffmpeg], av, torchvision
+pip install -e &quot;.[test]&quot;           # 额外：pytest
+pip install -e &quot;.[dev]&quot;            # pre-commit, black, isort, ruff
+
+# 注意：默认配置指向不存在的文件，必须显式指定 --pipeline_config
+python inference.py \
+  --pipeline_config configs/ltxv-13b-0.9.8-distilled.yaml \
+  --prompt &quot;a cat wearing sunglasses&quot; \
+  --output_path out.mp4
+
+# 图生视频
+python inference.py --pipeline_config configs/ltxv-13b-0.9.8-distilled.yaml \
+  --prompt &quot;…&quot; --input_media_path tests/utils/woman.jpeg --output_path out.mp4
+
+# 视频续写：输入片段帧数必须是 8 的倍数 + 1
+</code></pre>
+<p><strong>CLI 参数全表</strong>（<code>InferenceConfig</code>，<code>ltx_video/inference.py:316-386</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pipeline_config</code></td>
+<td><code>"configs/ltxv-13b-0.9.7-dev.yaml"</code></td>
+<td><strong>⚠️ 该文件不存在</strong></td>
+</tr>
+<tr>
+<td><code>prompt</code></td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td><code>negative_prompt</code></td>
+<td><code>"worst quality, inconsistent motion, blurry, jittery, distorted"</code></td>
+<td>仅在 <code>guidance_scale &gt; 1</code> 时生效</td>
+</tr>
+<tr>
+<td><code>height</code> / <code>width</code></td>
+<td><code>704</code> / <code>1216</code></td>
+<td>需 32 的倍数</td>
+</tr>
+<tr>
+<td><code>num_frames</code></td>
+<td><code>121</code></td>
+<td>需 8n+1</td>
+</tr>
+<tr>
+<td><code>frame_rate</code></td>
+<td><code>30</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>seed</code></td>
+<td><code>42</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>offload_to_cpu</code></td>
+<td><code>True</code></td>
+<td>且显存 &lt; 30GB 时才真的卸载</td>
+</tr>
+<tr>
+<td><code>image_cond_noise_scale</code></td>
+<td><code>0.15</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>prompt_enhancement_words_threshold</code></td>
+<td><code>120</code></td>
+<td>短于此才启用扩写</td>
+</tr>
+<tr>
+<td><code>output_path</code></td>
+<td>—</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>集成</strong>：README 提到 ComfyUI（<code>ComfyUI-LTXVideo</code>）与 diffusers 两套外部集成，本仓库不含其代码。</p>
+<hr />
+<h2>为什么 / 坑 — Why &amp; pitfalls</h2>
+<ol>
+<li><strong>⚠️ 默认跑不起来</strong>：<code>InferenceConfig.pipeline_config</code> 默认指向 <code>configs/ltxv-13b-0.9.7-dev.yaml</code>，而 <code>configs/</code> 下只有 0.9.8 → 直接 <code>python inference.py --prompt "x"</code> 抛 <code>ValueError: Pipeline config file co...</code>。</li>
+<li><strong>⚠️ 2B 蒸馏配置里的 <code>skip_block_list: [42]</code> 会 IndexError</strong>——2B 只有 28 层。它没炸只是因为 <code>stg_scale: 0</code> 让这个列表永远不会被索引。</li>
+<li><strong>CFG 在后期步骤是"关掉"的</strong>：13B dev 的 <code>guidance_scale: [1, 1, 6, 8, 6, 1, 1]</code>——<strong>引导不是常数，是一条按时间分 7 档的曲线</strong>，<code>guidance_timesteps</code> 给出每档的时间点。</li>
+<li><strong><code>allowed_inference_steps</code> 是硬断言</strong>：checkpoint metadata 给的白名单，每一步的 timestep 都必须在里面，否则直接抛错。</li>
+<li><strong><code>decode_timestep: 0.05</code> 可能是空操作</strong>：只有当 checkpoint 的 VAE 置了 <code>timestep_conditioning</code> 才生效——而仓库自己的 <code>OURS_VAE_CONFIG</code> <strong>没这个键</strong>（→ False），演示配置与 <code>tests/test_vae.py</code> 却都设成 True。<strong>证据两面冲突</strong>。</li>
+<li><strong>padding 用 0 而不是 -1</strong>：README 说用 -1，代码实际用 <code>0</code>（中灰），之后再裁掉尾部帧。</li>
+<li><strong>RoPE 的时间轴单位是"秒"</strong>：时间坐标除以 <code>frame_rate</code> 再除以 20 → <strong>超过 20 秒的视频会跑出归一化网格</strong>（外推）。</li>
+<li><strong>输入视频会被静默地过一遍 H.264 CRF=29</strong>（<code>pipelines/crf_compressor.py</code>）再喂进模型。</li>
+<li><strong>仓库里的示例媒体是 LFS 指针</strong>（132 字节），<code>imageio</code> 打不开 → 本地跑 <code>pytest tests/test_inference.py</code> 会失败，除非先 <code>git lfs pull</code>。</li>
+<li><strong>README 顶部的"4K / 50 FPS / 同步音频"是 LTX-2.5 的宣传</strong>，与本仓库无关（<code>grep -rni audio</code> 命中 0）。</li>
+<li><strong>13B 的超参在仓库里查不到</strong>（在 checkpoint metadata 里），<strong>T5 的参数量是外部假设推导</strong>。</li>
+<li><strong>没有 <code>--lora</code> 参数</strong>，也没有 IC-LoRA 与时间上采样器的代码路径——这些只能在 ComfyUI / diffusers 侧用。</li>
+<li><strong>torch 版本说法不一致</strong>：README 写 "PyTorch &gt;= 2.1.2"，<code>pyproject.toml</code> 写 <code>torch&gt;=2.1.0</code>。</li>
+<li><strong><code>media_frame_number</code> 在非首段时必须是 8 的倍数</strong>（<code>assert media_frame_number % 8 == 0</code>）；测试里出现的 43 走的是"单帧条件"分支，不受这条约束。</li>
+<li><strong>文本编码会白占显存</strong>：T5-XXL bf16 约 7 GiB，且推理时被 <code>.cpu()</code> 卸载（<code>pipeline_ltx_video.py:1044-1045</code>）——来回搬是固定开销。</li>
+</ol>
+<hr />
+<h2>未验证 · 风险 · 待定 — Unverified · risks · open</h2>
+<ol>
+<li><strong>13B 的 <code>num_layers</code> / <code>num_attention_heads</code> / <code>attention_head_dim</code> / <code>positional_embedding_max_pos</code></strong>：在 checkpoint metadata 里，仓库内不存在；只能证明 <strong>L ≥ 43</strong>。</li>
+<li><strong>13B 的精确参数量</strong>：给的是闭式公式 + 外插，不是实测。</li>
+<li><strong>T5-XXL 的确切参数量</strong>：3.76B 建立在 "d_model=4096、d_ff=10240、24 层、vocab=32128" 的<strong>外部假设</strong>上。</li>
+<li><strong>真实 checkpoint 的 VAE 配置与参数量</strong>：<code>OURS_VAE_CONFIG</code> 是 diffusers 格式 → 本仓库格式的映射目标，真实单文件 checkpoint 的 <code>encoder_blocks/decoder_blocks</code> 结构可能不同。</li>
+<li><strong>真实 checkpoint 的 VAE 是否带 <code>timestep_conditioning</code></strong>（决定 <code>decode_timestep</code> 是否生效）——证据两面冲突。</li>
+<li><strong><code>allowed_inference_steps</code> 的实际白名单</strong>（在 checkpoint metadata 里）。</li>
+<li><strong>调度器的真实配置</strong>（<code>shifting</code> / <code>target_shift_terminal</code> / 采样表）由 checkpoint metadata 决定。</li>
+<li><strong>SD3 式分辨率相关 shift 的逐点数值</strong>：代码用的是 <strong>latent 体积</strong>（<code>prod(latent_shape[2:])</code>）而非 token 数，与 diffusers 惯例不同，本报告未逐点计算。</li>
+<li><strong>LatentUpsampler 的真实配置</strong>（是否 <code>dims=2</code>、<code>mid_channels</code> 等）。</li>
+<li><strong>13B multi-scale 的真实峰值显存与延迟</strong>：README 的 "10 秒 / 3 秒 / H100 实时" 均为 <strong>README 声称</strong>。</li>
+<li><strong>RoPE 在 60 秒视频下的行为</strong>。</li>
+<li><strong>FP8 kernel 的数值精度</strong>（外部仓库 <code>LTXVideo-Q8-Kernels</code>）。</li>
+<li><strong>ComfyUI / diffusers 侧的行为</strong>（外部仓库）。</li>
+<li><strong><code>git</code> 历史只有 1 个 commit</strong>，无法从本仓库考察代码演进。</li>
+</ol>
+<hr />
+<h2>来源 / Sources</h2>
+<p><strong>仓库</strong></p>
+<ul>
+<li>URL：<a href="https://github.com/Lightricks/LTX-Video">https://github.com/Lightricks/LTX-Video</a></li>
+<li>分支：<code>main</code>；HEAD <code>50f0aef1297574a4b29acbdb874e3a363a6d5f2e</code>（2026-11-02）</li>
+<li>提交总数：1（压平 clone）；代码 License：Apache-2.0</li>
+<li>现状：README 标注 <strong>LTX-2.5（2026-08-11 发布）已取代本仓库</strong>，本仓库"no longer under active development"</li>
+<li>论文：<a href="https://arxiv.org/abs/2501.00103">https://arxiv.org/abs/2501.00103</a>；训练仓库：<a href="https://github.com/Lightricks/LTX-Video-Trainer">https://github.com/Lightricks/LTX-Video-Trainer</a></li>
+<li>本地路径：<code>ltx-video/</code>（临时目录）</li>
+</ul>
+<p><strong>关键文件</strong></p>
+<p><code>ltx_video/inference.py</code>（顶层入口）、<code>ltx_video/pipelines/pipeline_ltx_video.py</code>（base + multi-scale 两条流水线）、<code>ltx_video/models/transformers/transformer3d.py</code>（DiT）、<code>ltx_video/models/transformers/attention.py</code>（Block + 注意力）、<code>ltx_video/models/autoencoders/causal_video_autoencoder.py</code>（VAE）、<code>ltx_video/models/autoencoders/latent_upsampler.py</code>、<code>ltx_video/schedulers/rf.py</code>、<code>ltx_video/utils/diffusers_config_mapping.py</code>、<code>ltx_video/utils/skip_layer_strategy.py</code>、<code>configs/*.yaml</code>（13 个）</p>
+<p><strong>执行过的命令（可复现）</strong></p>
+<pre><code class="language-bash">git -C ltx-video/ log -1 --format='%H %ci %s'
+git -C ltx-video/ ls-files | wc -l                    # 79
+git -C ltx-video/ ls-files '*.py' | xargs wc -l | tail # 9,716 行
+git -C ltx-video/ ls-files '*.yaml' | xargs wc -l | tail
+find ltx-video -type f -size -1k -name '*.gif' -o -name '*.jpeg' | head   # 132 字节 LFS 指针
+git -C ltx-video/ grep -rni audio                     # 零命中
+</code></pre>
+<p><strong>时间</strong>：全部调研于 2026-11-08（Asia/Shanghai）离线完成；未访问网络。</p>
+    
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+
+    document.addEventListener('click', function(e) {
+      var mDiv = e.target.closest('.mermaid');
+      if (mDiv && !e.target.closest('.mermaid-overlay')) {
+        var svg = mDiv.querySelector('svg');
+        if (!svg) return;
+
+        var overlay = document.createElement('div');
+        overlay.className = 'mermaid-overlay';
+
+        var hint = document.createElement('div');
+        hint.className = 'zoom-hint';
+        hint.textContent = 'Scroll to zoom · Drag to pan · ESC to close';
+        overlay.appendChild(hint);
+
+        var controls = document.createElement('div');
+        controls.className = 'zoom-controls';
+        var btnPlus = document.createElement('button'); btnPlus.textContent = '+';
+        var btnMinus = document.createElement('button'); btnMinus.textContent = '−';
+        var btnFit = document.createElement('button'); btnFit.textContent = '↺';
+        btnFit.title = 'Fit to screen';
+        controls.appendChild(btnPlus);
+        controls.appendChild(btnMinus);
+        controls.appendChild(btnFit);
+        overlay.appendChild(controls);
+
+        var container = document.createElement('div');
+        container.className = 'zoom-container';
+        var clone = svg.cloneNode(true);
+        clone.removeAttribute('width');
+        clone.removeAttribute('height');
+        var bb = svg.getBBox ? svg.getBBox() : null;
+        var svgW = bb ? bb.width + bb.x + 40 : svg.scrollWidth || 800;
+        var svgH = bb ? bb.height + bb.y + 40 : svg.scrollHeight || 600;
+        clone.setAttribute('width', svgW);
+        clone.setAttribute('height', svgH);
+        container.appendChild(clone);
+        overlay.appendChild(container);
+        document.body.appendChild(overlay);
+
+        var scale = 1, tx = 0, ty = 0;
+        var dragging = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
+
+        function fitToScreen() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var sx = (vw * 0.92) / svgW, sy = (vh * 0.9) / svgH;
+          scale = Math.min(sx, sy, 3);
+          tx = (vw - svgW * scale) / 2;
+          ty = (vh - svgH * scale) / 2;
+          applyTransform();
+        }
+
+        function applyTransform() {
+          clone.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+        }
+
+        function zoomAt(cx, cy, factor) {
+          var newScale = Math.min(Math.max(scale * factor, 0.15), 8);
+          tx = cx - (cx - tx) * (newScale / scale);
+          ty = cy - (cy - ty) * (newScale / scale);
+          scale = newScale;
+          applyTransform();
+        }
+
+        fitToScreen();
+
+        container.addEventListener('wheel', function(ev) {
+          ev.preventDefault();
+          var factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
+          zoomAt(ev.clientX, ev.clientY, factor);
+        }, { passive: false });
+
+        container.addEventListener('mousedown', function(ev) {
+          if (ev.button !== 0) return;
+          dragging = true; startX = ev.clientX; startY = ev.clientY;
+          startTx = tx; startTy = ty;
+          container.classList.add('dragging');
+          ev.preventDefault();
+        });
+        window.addEventListener('mousemove', function moveHandler(ev) {
+          if (!dragging) return;
+          tx = startTx + (ev.clientX - startX);
+          ty = startTy + (ev.clientY - startY);
+          applyTransform();
+        });
+        window.addEventListener('mouseup', function upHandler() {
+          if (dragging) { dragging = false; container.classList.remove('dragging'); }
+        });
+
+        container.addEventListener('dblclick', function(ev) {
+          ev.stopPropagation();
+          zoomAt(ev.clientX, ev.clientY, 1.8);
+        });
+
+        btnPlus.addEventListener('click', function(ev) { ev.stopPropagation(); zoomAt(window.innerWidth/2, window.innerHeight/2, 1.4); });
+        btnMinus.addEventListener('click', function(ev) { ev.stopPropagation(); zoomAt(window.innerWidth/2, window.innerHeight/2, 1/1.4); });
+        btnFit.addEventListener('click', function(ev) { ev.stopPropagation(); fitToScreen(); });
+
+        overlay.addEventListener('click', function(ev) {
+          if (ev.target === overlay) overlay.remove();
+        });
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var ov = document.querySelector('.mermaid-overlay');
+        if (ov) ov.remove();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="720" viewBox="0 0 1400 720" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <defs>
+    <!-- 堆叠柱：顶部方角（灰色极薄段需要清晰可见），底部圆角 -->
+    <clipPath id="col-clip">
+      <path d="M945 158.2 H1155 V534 A6 6 0 0 1 1149 540 H951 A6 6 0 0 1 945 534 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- ================= 分栏分隔 ================= -->
+  <line x1="720" y1="28" x2="720" y2="660" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ================================================================
+       左半：五个模型参数量（横向条形图，0 → 30 B）
+       轴：x0 = 205，x1 = 605，400px / 30B ⇒ 13.3333 px / B
+       ================================================================ -->
+  <text x="40" y="52" font-size="16" font-weight="700" fill="#0f172a">五个模型各有多少参数（实测）</text>
+
+  <!-- 竖向网格线 -->
+  <g stroke="#f1f5f9" stroke-width="1">
+    <line x1="205"   y1="92" x2="205"   y2="496"/>
+    <line x1="271.7" y1="92" x2="271.7" y2="496"/>
+    <line x1="338.3" y1="92" x2="338.3" y2="496"/>
+    <line x1="405"   y1="92" x2="405"   y2="496"/>
+    <line x1="471.7" y1="92" x2="471.7" y2="496"/>
+    <line x1="538.3" y1="92" x2="538.3" y2="496"/>
+    <line x1="605"   y1="92" x2="605"   y2="496"/>
+  </g>
+
+  <!-- 条 1：T2V-A14B（单个专家） 14.29 B -->
+  <g>
+    <rect x="205" y="100" width="190.5" height="40" rx="4" fill="#7c3aed"/>
+    <text x="195" y="126" font-size="14" font-weight="700" fill="#334155" text-anchor="end">T2V-A14B（单个专家）</text>
+    <text x="405.5" y="126" font-size="16" font-weight="700" fill="#0f172a">14.29 B</text>
+  </g>
+
+  <!-- 条 2：TI2V-5B 5.00 B -->
+  <g>
+    <rect x="205" y="172" width="66.7" height="40" rx="4" fill="#7c3aed"/>
+    <text x="195" y="198" font-size="14" font-weight="700" fill="#334155" text-anchor="end">TI2V-5B</text>
+    <text x="281.7" y="198" font-size="16" font-weight="700" fill="#0f172a">5.00 B</text>
+  </g>
+
+  <!-- 条 3：S2V-14B 16.93 B -->
+  <g>
+    <rect x="205" y="244" width="225.7" height="40" rx="4" fill="#7c3aed"/>
+    <text x="195" y="270" font-size="14" font-weight="700" fill="#334155" text-anchor="end">S2V-14B</text>
+    <text x="440.7" y="270" font-size="16" font-weight="700" fill="#0f172a">16.93 B</text>
+  </g>
+
+  <!-- 条 4：Animate-14B 17.27 B -->
+  <g>
+    <rect x="205" y="316" width="230.3" height="40" rx="4" fill="#7c3aed"/>
+    <text x="195" y="342" font-size="14" font-weight="700" fill="#334155" text-anchor="end">Animate-14B</text>
+    <text x="445.3" y="342" font-size="16" font-weight="700" fill="#0f172a">17.27 B</text>
+  </g>
+
+  <!-- 条 5：A14B 两个专家合计 28.58 B（橙） -->
+  <g>
+    <rect x="205" y="388" width="381.1" height="40" rx="4" fill="#ea580c"/>
+    <text x="195" y="414" font-size="14" font-weight="700" fill="#334155" text-anchor="end">A14B 两个专家合计</text>
+    <text x="596.1" y="414" font-size="16" font-weight="700" fill="#c2410c">28.58 B</text>
+  </g>
+
+  <!-- 橙色标注框（引线指向橙条尾部） -->
+  <g>
+    <line x1="586.1" y1="428" x2="586.1" y2="440" stroke="#ea580c" stroke-width="1.5"/>
+    <rect x="386" y="440" width="314" height="34" rx="6" fill="#fff7ed" stroke="#ea580c" stroke-width="1.2"/>
+    <text x="543" y="462" font-size="14" font-weight="700" fill="#c2410c" text-anchor="middle">名字里的 14B，其实只是骨干</text>
+  </g>
+
+  <!-- 横轴 -->
+  <g>
+    <line x1="205" y1="500" x2="605" y2="500" stroke="#cbd5e1" stroke-width="1"/>
+    <g stroke="#cbd5e1" stroke-width="1">
+      <line x1="205"   y1="500" x2="205"   y2="508"/>
+      <line x1="271.7" y1="500" x2="271.7" y2="508"/>
+      <line x1="338.3" y1="500" x2="338.3" y2="508"/>
+      <line x1="405"   y1="500" x2="405"   y2="508"/>
+      <line x1="471.7" y1="500" x2="471.7" y2="508"/>
+      <line x1="538.3" y1="500" x2="538.3" y2="508"/>
+      <line x1="605"   y1="500" x2="605"   y2="508"/>
+    </g>
+    <g font-size="12" fill="#94a3b8" text-anchor="middle">
+      <text x="205"   y="524">0</text>
+      <text x="271.7" y="524">5</text>
+      <text x="338.3" y="524">10</text>
+      <text x="405"   y="524">15</text>
+      <text x="471.7" y="524">20</text>
+      <text x="538.3" y="524">25</text>
+      <text x="605"   y="524">30</text>
+    </g>
+    <text x="205" y="548" font-size="12" fill="#94a3b8">十亿参数（B）</text>
+  </g>
+
+  <!-- ================================================================
+       右半：A14B 一个 Transformer 层的参数构成
+       柱：x 945..1155，y 158.2..540
+       真实比例 1.0754 px / M：
+         FFN 141.58 M → 152.26 px（底）
+         自注意力 104.86 M → 112.77 px
+         交叉注意力 104.86 M → 112.77 px
+         其他 0.05 M → 真值 0.05 px，图中放大为 4 px（顶）
+       ================================================================ -->
+  <text x="760" y="52" font-size="16" font-weight="700" fill="#0f172a">一个 Transformer 层的构成（A14B）</text>
+
+  <!-- 总量括号 -->
+  <g>
+    <line x1="920" y1="158.2" x2="920" y2="540" stroke="#94a3b8" stroke-width="1.2"/>
+    <line x1="914" y1="158.2" x2="926" y2="158.2" stroke="#94a3b8" stroke-width="1.2"/>
+    <line x1="914" y1="540" x2="926" y2="540" stroke="#94a3b8" stroke-width="1.2"/>
+    <text x="906" y="349" font-size="16" font-weight="700" fill="#334155" text-anchor="middle" transform="rotate(-90 906 349)">单层合计 351.39 M</text>
+  </g>
+
+  <!-- 堆叠柱 -->
+  <g clip-path="url(#col-clip)">
+    <rect x="945" y="387.74" width="210" height="152.26" fill="#7c3aed"/>
+    <rect x="945" y="274.97" width="210" height="112.77" fill="#2563eb"/>
+    <rect x="945" y="162.2"  width="210" height="112.77" fill="#2563eb"/>
+    <rect x="945" y="158.2"  width="210" height="4"      fill="#94a3b8"/>
+    <g stroke="#ffffff" stroke-width="1">
+      <line x1="945" y1="387.74" x2="1155" y2="387.74"/>
+      <line x1="945" y1="274.97" x2="1155" y2="274.97"/>
+      <line x1="945" y1="162.2"  x2="1155" y2="162.2"/>
+    </g>
+  </g>
+  <path d="M945 158.2 H1155 V534 A6 6 0 0 1 1149 540 H951 A6 6 0 0 1 945 534 Z" fill="none" stroke="#cbd5e1" stroke-width="1"/>
+
+  <!-- 段标签 + 引线 -->
+  <g>
+    <!-- FFN -->
+    <line x1="1155" y1="463.87" x2="1166" y2="463.87" stroke="#94a3b8" stroke-width="1"/>
+    <text x="1172" y="468" font-size="14" font-weight="700" fill="#334155">FFN</text>
+    <text x="1172" y="490" font-size="16" font-weight="700" fill="#7c3aed">141.58 M</text>
+
+    <!-- 自注意力 -->
+    <line x1="1155" y1="331.36" x2="1166" y2="331.36" stroke="#94a3b8" stroke-width="1"/>
+    <text x="1172" y="336" font-size="14" font-weight="700" fill="#334155">自注意力</text>
+    <text x="1172" y="358" font-size="16" font-weight="700" fill="#2563eb">104.86 M</text>
+
+    <!-- 交叉注意力 -->
+    <line x1="1155" y1="218.59" x2="1166" y2="218.59" stroke="#94a3b8" stroke-width="1"/>
+    <text x="1172" y="223" font-size="14" font-weight="700" fill="#334155">交叉注意力</text>
+    <text x="1172" y="245" font-size="16" font-weight="700" fill="#2563eb">104.86 M</text>
+
+    <!-- 其他（极薄段） -->
+    <line x1="1155" y1="160.2" x2="1166" y2="160.2" stroke="#94a3b8" stroke-width="1"/>
+    <text x="1172" y="165" font-size="14" font-weight="700" fill="#334155">其他（调制 + 归一化）</text>
+    <text x="1172" y="187" font-size="16" font-weight="700" fill="#64748b">0.05 M</text>
+  </g>
+
+  <!-- 柱下说明 -->
+  <text x="1050" y="574" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">单层 351.39 M × 40 层 = 14.06 B（占 98.4%）</text>
+  <text x="1050" y="600" font-size="12" fill="#94a3b8" text-anchor="middle">注：「其他」0.05 M 一段真实高度不足 0.1 px，图中已放大示意</text>
+
+  <!-- ===== Source ===== -->
+  <text x="40" y="690" font-size="12" fill="#94a3b8">来源：wan/modules/model.py:183-259（按 meta device 实测逐参数求和）</text>
+</svg>

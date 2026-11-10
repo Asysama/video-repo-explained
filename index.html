@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>目录</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #fafafa;
+      padding: 2rem 1rem;
+    }
+
+    main { max-width: 1200px; margin: 0 auto; }
+
+    .mermaid { cursor: pointer; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1em; margin: 1em 0; background: #fff; position: relative; transition: box-shadow 0.2s; }
+    .mermaid:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
+    .mermaid::after { content: 'click to zoom'; position: absolute; bottom: 4px; right: 10px; font-size: 0.7em; color: #aaa; pointer-events: none; }
+
+    .mermaid-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; overflow: hidden; }
+    .mermaid-overlay .zoom-container { width: 100%; height: 100%; overflow: hidden; cursor: grab; }
+    .mermaid-overlay .zoom-container.dragging { cursor: grabbing; }
+    .mermaid-overlay .zoom-container svg { background: #fff; border-radius: 8px; padding: 1.5em; transform-origin: 0 0; position: absolute; }
+    .mermaid-overlay .zoom-hint { position: absolute; top: 16px; right: 24px; color: #ccc; font-size: 0.85em; z-index: 10000; pointer-events: none; }
+    .mermaid-overlay .zoom-controls { position: absolute; bottom: 24px; right: 24px; z-index: 10000; display: flex; gap: 8px; }
+    .mermaid-overlay .zoom-controls button { width: 40px; height: 40px; border: none; border-radius: 8px; background: rgba(255,255,255,0.9); color: #333; font-size: 1.3em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .mermaid-overlay .zoom-controls button:hover { background: #fff; }
+
+    h1, h2, h3, h4, h5, h6 { margin-top: 1.4em; margin-bottom: 0.6em; line-height: 1.3; }
+    h1 { font-size: 1.8rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3em; }
+    h2 { font-size: 1.4rem; }
+    h3 { font-size: 1.2rem; }
+
+    p { margin-bottom: 1em; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul, ol { margin: 0 0 1em 1.5em; }
+    li { margin-bottom: 0.25em; }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.9em; background: #eee; padding: 0.15em 0.35em; border-radius: 3px;
+    }
+
+    pre { background: #272822; color: #f8f8f2; padding: 1em; border-radius: 6px; overflow-x: auto; margin-bottom: 1em; }
+    pre code { background: none; padding: 0; color: inherit; font-size: 0.85em; }
+
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+    th, td { border: 1px solid #ccc; padding: 0.5em 0.75em; text-align: left; }
+    th { background: #eee; font-weight: 600; }
+
+    blockquote { border-left: 4px solid #ccc; margin: 0 0 1em 0; padding: 0.5em 1em; color: #555; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 2em 0; }
+
+    .file-list { list-style: none; margin-left: 0; }
+    .file-list li { margin-bottom: 0.5em; }
+    .file-list a { font-size: 1.1em; }
+
+    .nav { margin-bottom: 1.5em; font-size: 0.9em; }
+    .nav a { color: #666; }
+
+  </style>
+</head>
+<body>
+  <main>
+
+    
+      <h1>目录</h1>
+      <h1>三个开源视频生成仓库 · 完全拆解</h1>
+<p>2026-11-08 · 全部基于本地 checkout 的源码逐行调研，页面上每个数字都标了出处。</p>
+<table>
+<thead>
+<tr>
+<th>页面</th>
+<th>仓库</th>
+<th>一句话结论</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="ltx-video.html">LTX-Video (v0.9.x)</a></td>
+<td><code>github.com/Lightricks/LTX-Video</code></td>
+<td>已退休的 DiT 视频生成代码库：两遍多尺度渲染、CFG 是一条按时间分档的曲线、默认参数指向不存在的文件</td>
+</tr>
+<tr>
+<td><a href="wan22.html">Wan2.2</a></td>
+<td><code>github.com/Wan-Video/Wan2.2</code></td>
+<td>那个"MoE"其实是两份完整权重在时间轴上换班；参数是 meta device 实测出来的</td>
+</tr>
+<tr>
+<td><a href="cosmos.html">NVIDIA Cosmos</a></td>
+<td><code>github.com/NVIDIA/cosmos</code></td>
+<td>零代码的落地页：只有规格与测速表，质量分数一个都没有</td>
+</tr>
+</tbody>
+</table>
+<h2>三者的共同点</h2>
+<ul>
+<li>都是 <strong>DiT + 视频 VAE + 文本编码器</strong>的当代架构</li>
+<li>三家的<strong>核心数字都被实测/复算过</strong>：LTX 的 2B = 2,397,046,912；Wan 的 14B = 14,288,491,584；Cosmos 只有声明的 4B / 16B / 64B</li>
+<li>三家都把<strong>真正的训练代码放在了别处</strong>，这三个仓库全是推理侧的</li>
+<li>三家的 README 都比代码更"热闹"：宣传的能力和仓库里能跑通的东西之间存在明显落差</li>
+</ul>
+    
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+
+    document.addEventListener('click', function(e) {
+      var mDiv = e.target.closest('.mermaid');
+      if (mDiv && !e.target.closest('.mermaid-overlay')) {
+        var svg = mDiv.querySelector('svg');
+        if (!svg) return;
+
+        var overlay = document.createElement('div');
+        overlay.className = 'mermaid-overlay';
+
+        var hint = document.createElement('div');
+        hint.className = 'zoom-hint';
+        hint.textContent = 'Scroll to zoom · Drag to pan · ESC to close';
+        overlay.appendChild(hint);
+
+        var controls = document.createElement('div');
+        controls.className = 'zoom-controls';
+        var btnPlus = document.createElement('button'); btnPlus.textContent = '+';
+        var btnMinus = document.createElement('button'); btnMinus.textContent = '−';
+        var btnFit = document.createElement('button'); btnFit.textContent = '↺';
+        btnFit.title = 'Fit to screen';
+        controls.appendChild(btnPlus);
+        controls.appendChild(btnMinus);
+        controls.appendChild(btnFit);
+        overlay.appendChild(controls);
+
+        var container = document.createElement('div');
+        container.className = 'zoom-container';
+        var clone = svg.cloneNode(true);
+        clone.removeAttribute('width');
+        clone.removeAttribute('height');
+        var bb = svg.getBBox ? svg.getBBox() : null;
+        var svgW = bb ? bb.width + bb.x + 40 : svg.scrollWidth || 800;
+        var svgH = bb ? bb.height + bb.y + 40 : svg.scrollHeight || 600;
+        clone.setAttribute('width', svgW);
+        clone.setAttribute('height', svgH);
+        container.appendChild(clone);
+        overlay.appendChild(container);
+        document.body.appendChild(overlay);
+
+        var scale = 1, tx = 0, ty = 0;
+        var dragging = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
+
+        function fitToScreen() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var sx = (vw * 0.92) / svgW, sy = (vh * 0.9) / svgH;
+          scale = Math.min(sx, sy, 3);
+          tx = (vw - svgW * scale) / 2;
+          ty = (vh - svgH * scale) / 2;
+          applyTransform();
+        }
+
+        function applyTransform() {
+          clone.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+        }
+
+        function zoomAt(cx, cy, factor) {
+          var newScale = Math.min(Math.max(scale * factor, 0.15), 8);
+          tx = cx - (cx - tx) * (newScale / scale);
+          ty = cy - (cy - ty) * (newScale / scale);
+          scale = newScale;
+          applyTransform();
+        }
+
+        fitToScreen();
+
+        container.addEventListener('wheel', function(ev) {
+          ev.preventDefault();
+          var factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
+          zoomAt(ev.clientX, ev.clientY, factor);
+        }, { passive: false });
+
+        container.addEventListener('mousedown', function(ev) {
+          if (ev.button !== 0) return;
+          dragging = true; startX = ev.clientX; startY = ev.clientY;
+          startTx = tx; startTy = ty;
+          container.classList.add('dragging');
+          ev.preventDefault();
+        });
+        window.addEventListener('mousemove', function moveHandler(ev) {
+          if (!dragging) return;
+          tx = startTx + (ev.clientX - startX);
+          ty = startTy + (ev.clientY - startY);
+          applyTransform();
+        });
+        window.addEventListener('mouseup', function upHandler() {
+          if (dragging) { dragging = false; container.classList.remove('dragging'); }
+        });
+
+        container.addEventListener('dblclick', function(ev) {
+          ev.stopPropagation();
+          zoomAt(ev.clientX, ev.clientY, 1.8);
+        });
+
+        btnPlus.addEventListener('click', function(ev) { ev.stopPropagation(); zoomAt(window.innerWidth/2, window.innerHeight/2, 1.4); });
+        btnMinus.addEventListener('click', function(ev) { ev.stopPropagation(); zoomAt(window.innerWidth/2, window.innerHeight/2, 1/1.4); });
+        btnFit.addEventListener('click', function(ev) { ev.stopPropagation(); fitToScreen(); });
+
+        overlay.addEventListener('click', function(ev) {
+          if (ev.target === overlay) overlay.remove();
+        });
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var ov = document.querySelector('.mermaid-overlay');
+        if (ov) ov.remove();
+      }
+    });
+  </script>
+</body>
+</html>

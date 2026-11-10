@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <title>Wan2.2 · 文本 / 图像 / 声音：三条完全不同的条件注入路径</title>
+  <desc>文本经 T5 编码器得到 512 个 token 走交叉注意力；图像靠 36 通道拼接进输入；声音经语音编码器只送进 12 个指定层。三条路径共用 40 层 Transformer。</desc>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <defs>
+    <marker id="ar-orange" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#ea580c"/>
+    </marker>
+    <marker id="ar-blue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="ar-purple" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <!-- ================= 标题 ================= -->
+  <text x="700" y="46" text-anchor="middle" font-size="22" font-weight="bold" fill="#1e293b">Wan2.2 · 文本 / 图像 / 声音：三条完全不同的条件注入路径</text>
+
+  <!-- ================= 右侧公用：40 层 Transformer（竖直大框） ================= -->
+  <rect x="1148" y="100" width="216" height="500" rx="14" fill="#f8fafc" stroke="#334155" stroke-width="3.5"/>
+  <text x="1256" y="140" text-anchor="middle" font-size="19" font-weight="bold" fill="#1e293b">40 层 Transformer</text>
+  <text x="1256" y="162" text-anchor="middle" font-size="13" fill="#94a3b8">Wan2.2 DiT 主干（三路共用）</text>
+
+  <!-- 三个注入端口 -->
+  <g font-size="13">
+    <rect x="1158" y="185" width="11" height="11" rx="2.5" fill="#ea580c"/>
+    <text x="1178" y="195" fill="#c2410c">① 文本条件</text>
+    <rect x="1158" y="325" width="11" height="11" rx="2.5" fill="#2563eb"/>
+    <text x="1178" y="335" fill="#1d4ed8">② 图像潜变量（输入端）</text>
+    <rect x="1158" y="515" width="11" height="11" rx="2.5" fill="#7c3aed"/>
+    <text x="1178" y="525" fill="#6d28d9">③ 声音特征</text>
+  </g>
+
+  <!-- ================= 第 1 行 · 文本（橙 / 绿） ================= -->
+  <rect x="44" y="175" width="64" height="30" rx="7" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="76" y="196" text-anchor="middle" font-size="14" font-weight="bold" fill="#9a3412">① 文本</text>
+
+  <rect x="130" y="164" width="110" height="52" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2.5"/>
+  <text x="185" y="197" text-anchor="middle" font-size="17" fill="#9a3412">提示词</text>
+
+  <rect x="288" y="158" width="176" height="64" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="376" y="184" text-anchor="middle" font-size="17" fill="#15803d">T5 编码器</text>
+  <text x="376" y="206" text-anchor="middle" font-size="13" fill="#16a34a">24 层</text>
+  <text x="376" y="242" text-anchor="middle" font-size="13" fill="#94a3b8">umT5-XXL</text>
+
+  <rect x="512" y="164" width="196" height="52" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2.5"/>
+  <text x="610" y="197" text-anchor="middle" font-size="17" fill="#9a3412"><tspan font-size="18" font-weight="bold">512</tspan><tspan> 个 token</tspan></text>
+  <text x="610" y="242" text-anchor="middle" font-size="13" fill="#94a3b8">维度 <tspan font-size="16" font-weight="bold" fill="#9a3412">4,096</tspan></text>
+
+  <g stroke="#ea580c" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M240,190 L288,190" marker-end="url(#ar-orange)"/>
+    <path d="M464,190 L512,190" marker-end="url(#ar-orange)"/>
+    <path d="M708,190 L1146,190" marker-end="url(#ar-orange)"/>
+  </g>
+  <rect x="860" y="153" width="136" height="24" fill="#ffffff"/>
+  <text x="928" y="171" text-anchor="middle" font-size="14" fill="#c2410c">交叉注意力的 K / V</text>
+  <text x="1140" y="216" text-anchor="end" font-size="13" fill="#94a3b8">每个 block 都用一次</text>
+
+  <!-- ================= 分隔线 1 ================= -->
+  <line x1="40" y1="266" x2="1128" y2="266" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ================= 第 2 行 · 图像（蓝） ================= -->
+  <rect x="44" y="315" width="64" height="30" rx="7" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="76" y="336" text-anchor="middle" font-size="14" font-weight="bold" fill="#1d4ed8">② 图像</text>
+
+  <rect x="130" y="304" width="104" height="52" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="182" y="337" text-anchor="middle" font-size="17" fill="#1d4ed8">首帧</text>
+  <text x="182" y="382" text-anchor="middle" font-size="13" fill="#94a3b8">16 通道潜变量</text>
+
+  <rect x="254" y="304" width="88" height="52" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="298" y="337" text-anchor="middle" font-size="17" fill="#1d4ed8">遮罩</text>
+  <text x="298" y="382" text-anchor="middle" font-size="13" fill="#94a3b8">4 通道</text>
+
+  <rect x="362" y="304" width="118" height="52" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="421" y="337" text-anchor="middle" font-size="17" fill="#1d4ed8">随机噪声</text>
+  <text x="421" y="382" text-anchor="middle" font-size="13" fill="#94a3b8">16 通道</text>
+
+  <!-- 三个输入各自下行汇入通道 -->
+  <g stroke="#2563eb" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M234,330 L244,330 L244,410" marker-end="url(#ar-blue)"/>
+    <path d="M342,330 L352,330 L352,410" marker-end="url(#ar-blue)"/>
+    <path d="M480,330 L490,330 L490,410" marker-end="url(#ar-blue)"/>
+    <path d="M244,410 L690,410 L690,368" marker-end="url(#ar-blue)"/>
+  </g>
+
+  <rect x="560" y="294" width="240" height="72" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="2.5"/>
+  <text x="680" y="322" text-anchor="middle" font-size="16" fill="#1e293b">拼成 36 通道</text>
+  <text x="680" y="346" text-anchor="middle" font-size="13" fill="#64748b">直接拼通道，不经过图像编码器</text>
+
+  <path d="M800,330 L1146,330" stroke="#2563eb" stroke-width="2.5" fill="none" stroke-linecap="round" marker-end="url(#ar-blue)"/>
+  <text x="1140" y="356" text-anchor="end" font-size="13" fill="#94a3b8">图生视频靠拼通道实现</text>
+
+  <!-- ================= 分隔线 2 ================= -->
+  <line x1="40" y1="446" x2="1128" y2="446" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ================= 第 3 行 · 声音（紫） ================= -->
+  <rect x="44" y="505" width="64" height="30" rx="7" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="76" y="526" text-anchor="middle" font-size="14" font-weight="bold" fill="#6d28d9">③ 声音</text>
+
+  <rect x="130" y="494" width="96" height="52" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
+  <text x="178" y="527" text-anchor="middle" font-size="17" fill="#6d28d9">语音</text>
+  <text x="178" y="572" text-anchor="middle" font-size="13" fill="#94a3b8">音频</text>
+
+  <rect x="276" y="488" width="176" height="64" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
+  <text x="364" y="514" text-anchor="middle" font-size="17" fill="#6d28d9">语音编码器</text>
+  <text x="364" y="536" text-anchor="middle" font-size="13" fill="#7c3aed">25 层</text>
+  <text x="364" y="572" text-anchor="middle" font-size="13" fill="#94a3b8">50 → 30 fps</text>
+
+  <rect x="502" y="494" width="176" height="52" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2.5"/>
+  <text x="590" y="527" text-anchor="middle" font-size="17" fill="#6d28d9">音频特征</text>
+  <text x="590" y="572" text-anchor="middle" font-size="13" fill="#94a3b8">只送进 <tspan font-size="16" font-weight="bold" fill="#6d28d9">12</tspan> 个指定的层</text>
+
+  <g stroke="#7c3aed" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M226,520 L276,520" marker-end="url(#ar-purple)"/>
+    <path d="M452,520 L502,520" marker-end="url(#ar-purple)"/>
+    <path d="M678,520 L1146,520" marker-end="url(#ar-purple)"/>
+  </g>
+  <rect x="762" y="470" width="302" height="24" fill="#ffffff"/>
+  <text x="913" y="488" text-anchor="middle" font-size="14" fill="#6d28d9">第 0, 4, 8, 12, 16, 20, 24, 27, 30, 33, 36, 39 层</text>
+  <text x="1140" y="546" text-anchor="end" font-size="13" fill="#94a3b8">无条件的分支把声音置零</text>
+
+  <!-- ================= 第 3 行附注（浅灰虚线） ================= -->
+  <rect x="130" y="602" width="560" height="38" rx="8" fill="#f8fafc" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="410" y="626" text-anchor="middle" font-size="13" fill="#64748b">角色动画另有一路：图像编码器 → 257 个 token → 前置到文本（共 769 个 token）</text>
+
+  <!-- ================= 图例 ================= -->
+  <g font-size="13" fill="#475569">
+    <rect x="1010" y="700" width="13" height="13" rx="3" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="1029" y="711">文本条件</text>
+    <rect x="1100" y="700" width="13" height="13" rx="3" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="1119" y="711">图像条件</text>
+    <rect x="1190" y="700" width="13" height="13" rx="3" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="1209" y="711">声音条件</text>
+    <rect x="1280" y="700" width="13" height="13" rx="3" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1299" y="711">主干</text>
+  </g>
+
+  <!-- ================= 来源 ================= -->
+  <text x="40" y="712" font-size="12" fill="#94a3b8">来源：wan/modules/t5.py:456-513、wan/image2video.py、wan/speech2video.py、wan/modules/animate/</text>
+</svg>

@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <!-- ============ 三个面板 ============ -->
+  <rect x="40" y="32" width="413" height="566" rx="16" fill="#fff7ed" stroke="#fed7aa"/>
+  <rect x="493" y="32" width="413" height="566" rx="16" fill="#eff6ff" stroke="#dbeafe"/>
+  <rect x="946" y="32" width="413" height="566" rx="16" fill="#f5f3ff" stroke="#e9d5ff"/>
+
+  <!-- ============ 左栏：动作条件维度 ============ -->
+  <text x="60" y="66" font-size="20" font-weight="700" fill="#334155">动作条件维度</text>
+
+  <g>
+    <rect x="60" y="82" width="373" height="62" rx="10" fill="#ffffff" stroke="#fed7aa"/>
+    <text x="246.5" y="120" font-size="15" fill="#334155" text-anchor="middle">相机运动<tspan fill="#94a3b8"> · </tspan><tspan font-size="18" font-weight="700" fill="#ea580c">9D</tspan></text>
+  </g>
+  <g>
+    <rect x="60" y="157" width="373" height="62" rx="10" fill="#ffffff" stroke="#fed7aa"/>
+    <text x="246.5" y="195" font-size="15" fill="#334155" text-anchor="middle">自动驾驶<tspan fill="#94a3b8"> · </tspan><tspan font-size="18" font-weight="700" fill="#ea580c">9D</tspan></text>
+  </g>
+  <g>
+    <rect x="60" y="232" width="373" height="62" rx="10" fill="#ffffff" stroke="#fed7aa"/>
+    <text x="246.5" y="270" font-size="15" fill="#334155" text-anchor="middle">第一视角<tspan fill="#94a3b8"> · </tspan><tspan font-size="18" font-weight="700" fill="#ea580c">57D</tspan></text>
+  </g>
+  <g>
+    <rect x="60" y="307" width="373" height="62" rx="10" fill="#ffffff" stroke="#fed7aa"/>
+    <text x="246.5" y="345" font-size="15" fill="#334155" text-anchor="middle">单臂<tspan fill="#94a3b8"> · </tspan><tspan font-size="18" font-weight="700" fill="#ea580c">10D</tspan></text>
+  </g>
+  <g>
+    <rect x="60" y="382" width="373" height="62" rx="10" fill="#ffffff" stroke="#fed7aa"/>
+    <text x="246.5" y="420" font-size="15" fill="#334155" text-anchor="middle">双臂<tspan fill="#94a3b8"> · </tspan><tspan font-size="18" font-weight="700" fill="#ea580c">20D</tspan></text>
+  </g>
+  <g>
+    <rect x="60" y="457" width="373" height="62" rx="10" fill="#ffffff" stroke="#fed7aa"/>
+    <text x="246.5" y="495" font-size="15" fill="#334155" text-anchor="middle">人形<tspan fill="#94a3b8"> · </tspan><tspan font-size="18" font-weight="700" fill="#ea580c">29D</tspan></text>
+  </g>
+  <text x="60" y="556" font-size="12" fill="#64748b">第一视角 57 维 = 相机 + 双手 + 躯干</text>
+
+  <!-- ============ 中栏：分辨率 ============ -->
+  <text x="513" y="66" font-size="20" font-weight="700" fill="#334155">分辨率</text>
+
+  <g>
+    <rect x="513" y="84" width="373" height="112" rx="10" fill="#ffffff" stroke="#dbeafe"/>
+    <text x="533" y="132" font-size="22" font-weight="700" fill="#2563eb">720p</text>
+    <line x1="628" y1="124" x2="708" y2="124" stroke="#2563eb" stroke-width="2.2" marker-end="url(#arrowBlue)"/>
+    <text x="866" y="132" font-size="20" text-anchor="end" fill="#334155">1280×720</text>
+    <text x="533" y="164" font-size="12" fill="#64748b">Super / Nano 支持；Edge 不支持</text>
+  </g>
+  <g>
+    <rect x="513" y="208" width="373" height="112" rx="10" fill="#ffffff" stroke="#dbeafe"/>
+    <text x="533" y="256" font-size="22" font-weight="700" fill="#2563eb">480p</text>
+    <line x1="628" y1="248" x2="708" y2="248" stroke="#2563eb" stroke-width="2.2" marker-end="url(#arrowBlue)"/>
+    <text x="866" y="256" font-size="20" text-anchor="end" fill="#334155">832×480</text>
+    <text x="533" y="288" font-size="12" fill="#64748b">三档都支持</text>
+  </g>
+  <g>
+    <rect x="513" y="332" width="373" height="112" rx="10" fill="#ffffff" stroke="#dbeafe"/>
+    <text x="533" y="380" font-size="22" font-weight="700" fill="#2563eb">256p</text>
+    <line x1="628" y1="372" x2="708" y2="372" stroke="#2563eb" stroke-width="2.2" marker-end="url(#arrowBlue)"/>
+    <text x="866" y="380" font-size="20" text-anchor="end" fill="#334155">320×192</text>
+    <text x="533" y="412" font-size="12" fill="#64748b">三档都支持</text>
+  </g>
+
+  <rect x="513" y="486" width="373" height="68" rx="10" fill="#dbeafe"/>
+  <text x="699.5" y="526" font-size="13" text-anchor="middle" fill="#334155">全部 16:9 · 默认帧率 24 fps · 提示词建议 &lt; 300 词</text>
+
+  <!-- ============ 右栏：能生成多长 ============ -->
+  <text x="966" y="66" font-size="20" font-weight="700" fill="#334155">能生成多长</text>
+
+  <line x1="1000" y1="470" x2="1000" y2="108" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowPurple)"/>
+
+  <circle cx="1000" cy="150" r="7" fill="#7c3aed"/>
+  <text x="1020" y="156" font-size="15" fill="#334155">Sim-Bimanual<tspan fill="#94a3b8">  </tspan><tspan font-size="18" font-weight="700" fill="#7c3aed">901 帧</tspan></text>
+  <text x="1020" y="176" font-size="12" fill="#64748b">@30 fps · 480p</text>
+
+  <circle cx="1000" cy="228" r="7" fill="#7c3aed"/>
+  <text x="1020" y="234" font-size="15" fill="#334155">Sim-Transfer<tspan fill="#94a3b8">  </tspan><tspan font-size="18" font-weight="700" fill="#7c3aed">600 帧</tspan></text>
+
+  <circle cx="1000" cy="306" r="7" fill="#7c3aed"/>
+  <text x="1020" y="312" font-size="15" fill="#334155">Transfer-Auto<tspan fill="#94a3b8">  </tspan><tspan font-size="18" font-weight="700" fill="#7c3aed">300 帧</tspan></text>
+
+  <circle cx="1000" cy="384" r="7" fill="#7c3aed"/>
+  <text x="1020" y="390" font-size="15" fill="#334155">通用生成<tspan fill="#94a3b8">  </tspan><tspan font-size="18" font-weight="700" fill="#7c3aed">189 帧</tspan></text>
+  <text x="1020" y="410" font-size="12" fill="#64748b">默认</text>
+
+  <circle cx="1000" cy="462" r="7" fill="#7c3aed"/>
+  <text x="1020" y="468" font-size="15" fill="#334155">Edge 档<tspan fill="#94a3b8">  </tspan><tspan font-size="18" font-weight="700" fill="#7c3aed">50–150 帧</tspan></text>
+
+  <line x1="1000" y1="472" x2="1000" y2="496" stroke="#9ca3af" stroke-width="1.6" stroke-dasharray="4 4"/>
+  <rect x="966" y="496" width="373" height="58" rx="10" fill="#ffffff" stroke="#9ca3af" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="1152.5" y="530" font-size="13" text-anchor="middle" fill="#64748b">图生视频续写：只喂前 5 帧（约 3 秒）作条件</text>
+
+  <!-- ============ 底部通栏 ============ -->
+  <rect x="40" y="618" width="1320" height="58" rx="14" fill="#f1f5f9" stroke="#e2e8f0"/>
+  <text x="700" y="653" font-size="14" text-anchor="middle" fill="#334155">三档模型共用同一套接口：吃「<tspan fill="#ea580c" font-weight="700">文本 / 图像 / 视频 / 动作</tspan>」，吐「<tspan fill="#2563eb" font-weight="700">视频 / 图像 / 音频 / 动作</tspan>」</text>
+</svg>

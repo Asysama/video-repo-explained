@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NVIDIA Cosmos 完全拆解</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #fafafa;
+      padding: 2rem 1rem;
+    }
+
+    main { max-width: 1200px; margin: 0 auto; }
+
+    .mermaid { cursor: pointer; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1em; margin: 1em 0; background: #fff; position: relative; transition: box-shadow 0.2s; }
+    .mermaid:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
+    .mermaid::after { content: 'click to zoom'; position: absolute; bottom: 4px; right: 10px; font-size: 0.7em; color: #aaa; pointer-events: none; }
+
+    .mermaid-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; overflow: hidden; }
+    .mermaid-overlay .zoom-container { width: 100%; height: 100%; overflow: hidden; cursor: grab; }
+    .mermaid-overlay .zoom-container.dragging { cursor: grabbing; }
+    .mermaid-overlay .zoom-container svg { background: #fff; border-radius: 8px; padding: 1.5em; transform-origin: 0 0; position: absolute; }
+    .mermaid-overlay .zoom-hint { position: absolute; top: 16px; right: 24px; color: #ccc; font-size: 0.85em; z-index: 10000; pointer-events: none; }
+    .mermaid-overlay .zoom-controls { position: absolute; bottom: 24px; right: 24px; z-index: 10000; display: flex; gap: 8px; }
+    .mermaid-overlay .zoom-controls button { width: 40px; height: 40px; border: none; border-radius: 8px; background: rgba(255,255,255,0.9); color: #333; font-size: 1.3em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .mermaid-overlay .zoom-controls button:hover { background: #fff; }
+
+    h1, h2, h3, h4, h5, h6 { margin-top: 1.4em; margin-bottom: 0.6em; line-height: 1.3; }
+    h1 { font-size: 1.8rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3em; }
+    h2 { font-size: 1.4rem; }
+    h3 { font-size: 1.2rem; }
+
+    p { margin-bottom: 1em; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul, ol { margin: 0 0 1em 1.5em; }
+    li { margin-bottom: 0.25em; }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.9em; background: #eee; padding: 0.15em 0.35em; border-radius: 3px;
+    }
+
+    pre { background: #272822; color: #f8f8f2; padding: 1em; border-radius: 6px; overflow-x: auto; margin-bottom: 1em; }
+    pre code { background: none; padding: 0; color: inherit; font-size: 0.85em; }
+
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+    th, td { border: 1px solid #ccc; padding: 0.5em 0.75em; text-align: left; }
+    th { background: #eee; font-weight: 600; }
+
+    blockquote { border-left: 4px solid #ccc; margin: 0 0 1em 0; padding: 0.5em 1em; color: #555; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 2em 0; }
+
+    .file-list { list-style: none; margin-left: 0; }
+    .file-list li { margin-bottom: 0.5em; }
+    .file-list a { font-size: 1.1em; }
+
+    .nav { margin-bottom: 1.5em; font-size: 0.9em; }
+    .nav a { color: #666; }
+
+  </style>
+</head>
+<body>
+  <main>
+
+    
+      <h1>NVIDIA Cosmos 完全拆解</h1>
+      <h1>NVIDIA Cosmos 仓库完全拆解：一个零代码的「物理 AI 落地页」，以及它到底没告诉你的事</h1>
+<blockquote>
+<p>调研对象：<code>https://github.com/NVIDIA/cosmos</code>（本地 checkout：<code>cosmos/</code>）
+调研方式：<strong>离线</strong>，全部结论来自仓库文件内容与 <code>git</code> 命令输出。撰写日期：2026-11-08（Asia/Shanghai）。
+引用约定：<code>文件路径:行号</code>。仓库里没有写明的，一律标注 <strong>「仓库未说明」</strong>，不做外部知识补齐。</p>
+</blockquote>
+<p><img alt="图 1｜NVIDIA Cosmos 是什么：三档世界模型 + 五种能力，一张图看完" src="2026-11-08_nvidia-cosmos_fig1-hero.svg" /></p>
+<p><strong>图 1｜NVIDIA Cosmos 是什么</strong> —— 看这里：左边三块是模型大小档位（Edge 4B / Nano 16B / Super 64B），右边三块是它能干的事（画、读、动）。中间那条横杠是关键：<strong>同一个模型既当"画家"又当"分析师"</strong>。</p>
+<hr />
+<h2>结论 / Conclusion</h2>
+<p><strong>这个仓库一行模型代码都没有。</strong> 32 个受版本控制的文件里，14 个是 Markdown（4,398 行）、12 个是演示用的 GIF/MP4、4 个是品牌图，<strong>没有任何 <code>.py</code>、<code>.sh</code>、<code>.ipynb</code>、<code>.yaml</code>、权重或数据集</strong>。它是一张<strong>落地页 + 规格书 + 测速表</strong>：告诉你 Cosmos 3 有哪三档模型、每个模型能吃什么吐什么、跑一次要多少秒。</p>
+<p>真正要紧的三件事：<strong>一</strong>，三档模型 Edge(4B) / Nano(16B) / Super(64B) 统一用 <strong>MoT（Mixture-of-Transformers）</strong> 架构，自回归 Transformer 管理解、扩散 Transformer 管生成、共享权重；<strong>二</strong>，仓库里有<strong>大量真实的延迟实测</strong>（Nano 的 i2v 720p 在 B300 上 46.81 秒、在 H20 上 282.41 秒），但<strong>一个质量分数都没有</strong>——PAIBench、Physics-IQ 只有名字没有结果；<strong>三</strong>，所有"训练相关"的内容只有四个方法名（SFT / LoRA / RL / distillation），数据、算法、rollout 循环、latent 形状，<strong>仓库通篇未说明</strong>。</p>
+<h3>技术版 / Technical</h3>
+<ul>
+<li><strong>身份</strong>：<code>main</code> 分支，HEAD = <code>71317702510f7c456ba3d702b84fb103546caea2</code>（2026-11-06 17:56:04 +0100，Egor Krivov），本地为压平 clone，<strong>仅 1 个提交</strong>、无 tag。License = <strong>OpenMDW-1.1</strong>，<code>LICENSE:28-30</code> 明文"对输出不施加任何限制"。</li>
+<li><strong>体量</strong>：tracked 文件 32 个 / 40,193,216 字节；其中 6 个 GIF 就占 21.9 MB（54%），因为 GitHub README 不自动播视频。</li>
+<li><strong>定位</strong>：<code>AGENTS.md:7</code>——"New recipes, skills and code go to <strong>Cosmos Framework</strong>, not this repository." 本仓库只做索引与规格。</li>
+<li><strong>规格来源</strong>：<code>docs/reference/models.md</code>（135 行，模型与 workflow 矩阵）+ 6 个 benchmark 页（合计约 3,100 行延迟数据）。</li>
+<li><strong>工作负载口径</strong>：Nano/Super 主表 = <strong>189 帧 @24 FPS，batch 1</strong>；Edge 页 = <strong>121 帧</strong>；FP8 页 = <strong>首尾各 3 步 W8A16、中间步 W8A8</strong>（"35 步"这个总数<strong>只存在于 HEAD 的提交信息里</strong>，任何 tracked 文件都没写）。</li>
+</ul>
+<hr />
+<h2>一、这个仓库到底是什么：一个"零代码落地页"</h2>
+<p><strong>傻瓜层：</strong> 你把它当成一份 NVIDIA 的宣传册 + 测速报告就行。里面没有可以 <code>pip install</code> 的模型包，没有 <code>python train.py</code>，没有推理脚本。你能拿到的全是"规格"和"秒数"。</p>
+<h3>技术版 / Technical</h3>
+<p>仓库自述（<code>README.md:78</code>）：</p>
+<blockquote>
+<p>"This repository is the landing repo to start your physical AI journey with Cosmos. Here you can find detailed information on Cosmos models and explore Cosmos cookbook - a set of agent-runnable recipes for various objectives and industries."</p>
+</blockquote>
+<p><code>AGENTS.md:3</code> 说得更直接：</p>
+<blockquote>
+<p>"This is the <strong>landing repository</strong> for NVIDIA Cosmos: the README, the model reference and the Cosmos Cookbook, an index of agent-runnable recipes. <strong>Code, recipes and agent skills live in Cosmos Framework</strong>."</p>
+</blockquote>
+<p><strong>实测文件构成</strong>（<code>git ls-files | wc -l</code> = 32）：</p>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th style="text-align: right;">文件数</th>
+<th style="text-align: right;">字节</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Markdown</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">222,154</td>
+<td><strong>4,398 行</strong>（全部 md 行数之和）</td>
+</tr>
+<tr>
+<td>GIF 演示</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">21,880,249</td>
+<td>README 六宫格演示，占 tracked 体积 <strong>54%</strong></td>
+</tr>
+<tr>
+<td>MP4 演示</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">17,691,745</td>
+<td><code>assets/demos/mp4/</code>，README 未引用</td>
+</tr>
+<tr>
+<td>PNG</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">386,974</td>
+<td><code>assets/brand/cosmos-logo.png</code>（274×152）、<code>docs/assets/cosmos3-model-architecture.png</code>（<strong>2404×1126</strong>）</td>
+</tr>
+<tr>
+<td>SVG</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">6,562</td>
+<td><code>badge-new.svg</code>（NVIDIA 绿 #76B900，3.6s 扫光动画）、<code>badge-website.svg</code></td>
+</tr>
+<tr>
+<td>LICENSE</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2,619</td>
+<td>OpenMDW-1.1 正文，49 行</td>
+</tr>
+<tr>
+<td>.gitignore</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2,413</td>
+<td>Python 项目通用模板（190 行）——<strong>本仓库没有 Python，这个文件实际不生效</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>代码文件数量：0。</strong>（<code>git ls-files | grep -E "\.(py|sh|js|ts|ipynb|yaml|yml|toml|json|cpp|cu)$"</code> → 无输出）</p>
+<h3>完整文件地图（全部 32 个）</h3>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>README.md</code></td>
+<td>落地页：定位、三档模型表、"Find your path" 导航、Diffusers 快速开始、平台组件表、限制与许可、BibTeX。187 行</td>
+</tr>
+<tr>
+<td><code>AGENTS.md</code></td>
+<td>给 AI/维护者的贡献规则：内容归属哪个仓库、示例 checkpoint 表要双改同步、链接用相对路径、PR 目标 <code>main</code>。23 行</td>
+</tr>
+<tr>
+<td><code>COOKBOOK.md</code></td>
+<td>配方目录（纯链接索引）：Inference 6 条、Simulation 5 条、Post-training 6 条、Distillation 1 条、Evaluation 2 类；行业标签 ANY/AV/ROB/INFRA/MFG/AG/MED + GPU 预算标签 S/M/L/XL。116 行</td>
+</tr>
+<tr>
+<td><code>SECURITY.md</code></td>
+<td>漏洞上报渠道（NVIDIA 提交表单 / psirt@nvidia.com）、PGP 要求。19 行</td>
+</tr>
+<tr>
+<td><code>LICENSE</code></td>
+<td>OpenMDW-1.1 全文：授权、保留声明义务、专利诉讼终止条款、"对输出不施加任何限制或义务"。<strong>不含 NOMINA / 非商用条款</strong>（<code>git grep -i NOMINA</code> 零命中）</td>
+</tr>
+<tr>
+<td><code>.gitignore</code></td>
+<td>Python 通用忽略模板（190 行）</td>
+</tr>
+<tr>
+<td><code>.github/ISSUE_TEMPLATE/bug_report.md</code></td>
+<td>Bug 模板：复现步骤、期望 vs 实际、错误栈折叠区、系统信息表。64 行</td>
+</tr>
+<tr>
+<td><code>.github/ISSUE_TEMPLATE/feature_request.md</code></td>
+<td>功能请求模板：问题与用例、提案、受影响区域多选。29 行</td>
+</tr>
+<tr>
+<td><code>docs/reference/models.md</code></td>
+<td><strong>模型参考主文档</strong>（135 行）：三档基础模型、10 个示例 checkpoint、6 个 FP8 checkpoint、MoT 架构段、<strong>11 种 workflow 的 I/O 矩阵</strong>、4 个 Simulation checkpoint 的 I/O、生成设置、采样默认值、局限性</td>
+</tr>
+<tr>
+<td><code>docs/reference/inference_benchmarks.md</code></td>
+<td>基准索引 + <strong>Reasoner 基准全量表</strong>（817 行）：Edge/Nano/Super 在 vLLM 上的 TTFT / 请求延迟 / 吞吐（并发 1/64/128/256），外加 Jetson/DGX 的 HF Transformers eager 对比</td>
+</tr>
+<tr>
+<td><code>docs/reference/inference_benchmarks/cosmos3-edge-generator.md</code></td>
+<td>Edge(4B) 延迟表（201 行）：t2i/t2v/i2v/v2v，TensorRT-LLM 覆盖 8 款平台，视频统一 <strong>121 帧</strong></td>
+</tr>
+<tr>
+<td><code>docs/reference/inference_benchmarks/cosmos3-nano-generator.md</code></td>
+<td>Nano(16B) BF16 全量页（<strong>927 行</strong>）：方法论、workload 定义、t2v/i2v/t2i、v2v/t2av/v2av/i2av、6 种 transfer 控制 × 8 GPU、8 张 action 生成表</td>
+</tr>
+<tr>
+<td><code>docs/reference/inference_benchmarks/cosmos3-super-generator.md</code></td>
+<td>Super(64B) BF16 全量页（<strong>929 行</strong>），结构同 Nano，但 GPU 数配置不同（部分 8 卡），含专属注记 8/9</td>
+</tr>
+<tr>
+<td><code>docs/reference/inference_benchmarks/cosmos3-nano-fp8-generator.md</code></td>
+<td>Nano-FP8 页（456 行）：PyTorch*（另一种 FP8 recipe）vs Diffusers FP8 vs NIM 2.1.0，含 GB300 区块</td>
+</tr>
+<tr>
+<td><code>docs/reference/inference_benchmarks/cosmos3-super-fp8-generator.md</code></td>
+<td>Super-FP8 页（456 行）</td>
+</tr>
+<tr>
+<td><code>docs/assets/cosmos3-model-architecture.png</code></td>
+<td>Cosmos 3 模型架构图，2404×1126 RGBA，被 <code>models.md:53</code> 引用</td>
+</tr>
+<tr>
+<td><code>assets/ASSET_SPECS.md</code></td>
+<td>素材规格说明（39 行）：品牌资产、Demo 六宫格每个 GIF 的来源与重切规格</td>
+</tr>
+<tr>
+<td><code>assets/brand/cosmos-logo.png</code></td>
+<td>Cosmos Logo，274×152 RGB</td>
+</tr>
+<tr>
+<td><code>assets/brand/badge-new.svg</code></td>
+<td>44×20 动画 "NEW" 徽章（#76B900 + 3.6s 扫光 + <code>prefers-reduced-motion</code> 降级）</td>
+</tr>
+<tr>
+<td><code>assets/brand/badge-website.svg</code></td>
+<td>138×20 "Cosmos 3 website" 盾牌徽章</td>
+</tr>
+<tr>
+<td><code>assets/demos/physics_newton_cradle.gif</code></td>
+<td>牛顿摆演示 640×369 @20fps，42 帧，2.1s，4.01 MB</td>
+</tr>
+<tr>
+<td><code>assets/demos/transfer_worldscenario.gif</code></td>
+<td>世界场景迁移（控制布局→写实驾驶）640×360 @15fps，40 帧，2.67s，4.49 MB</td>
+</tr>
+<tr>
+<td><code>assets/demos/policy_screwdriver.gif</code></td>
+<td>真机策略执行 480×270 @12fps，48 帧，4.01s，1.38 MB</td>
+</tr>
+<tr>
+<td><code>assets/demos/driving_sim_falling_rocks.gif</code></td>
+<td>驾驶仿真落石 480×270 @10fps，55 帧，5.5s，4.34 MB</td>
+</tr>
+<tr>
+<td><code>assets/demos/fd_egocentric_repair_poses.gif</code></td>
+<td>前向动力学第一人称 rollout 520×293 @12fps，48 帧，4.01s，3.54 MB</td>
+</tr>
+<tr>
+<td><code>assets/demos/reasoner_driving_hazard.gif</code></td>
+<td>World Reasoner 驾驶危险预判 600×338 @14fps，42 帧，3.0s，4.11 MB</td>
+</tr>
+<tr>
+<td><code>assets/demos/mp4/*.mp4</code>（6 个）</td>
+<td>上述演示的 MP4 源，分辨率/帧率更高（见文件地图下方的视频）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>一又二分之一、仓库自带的四段演示（原素材，未改动）</h2>
+<p><strong>傻瓜层：</strong> 仓库里放了四段真实演示视频，是这个"只有文档"的仓库里唯一能看到"模型到底能干嘛"的东西。</p>
+<video src="2026-11-08_nvidia-cosmos_demo-newton.mp4" width="480" controls></video>
+
+<p><strong>图 4｜牛顿摆（physics_newton_cradle）</strong> —— 640×369 @20fps，42 帧，2.1 秒，GIF 版 4.01 MB。这是仓库里唯一"物理正确性"看起来最直观的例子：链条、碰撞、重力。</p>
+<video src="2026-11-08_nvidia-cosmos_demo-transfer.mp4" width="480" controls></video>
+
+<p><strong>图 5｜世界场景迁移（transfer_worldscenario）</strong> —— 640×360 @15fps，40 帧，2.67 秒。输入是"控制用"的结构图（车道线、物体框），输出是写实的驾驶视频——这就是 v2v-transfer workflow 的样子。</p>
+<video src="2026-11-08_nvidia-cosmos_demo-egocentric.mp4" width="480" controls></video>
+
+<p><strong>图 6｜第一视角前向动力学（fd_egocentric_repair_poses）</strong> —— 520×293 @12fps，48 帧，4.01 秒。画面上有手部姿态叠层：模型吃进 <strong>57 维第一视角动作</strong>，吐出下一步该怎么动的画面。</p>
+<video src="2026-11-08_nvidia-cosmos_demo-screwdriver.mp4" width="480" controls></video>
+
+<p><strong>图 7｜真机策略执行（policy_screwdriver）</strong> —— 480×270 @12fps，48 帧，4.01 秒。任务原文是"把螺丝刀和手套放进紫色容器"，对应 <code>Cosmos3-Nano-Policy-DROID</code> / <code>Cosmos3-Edge-Policy-DROID</code> 两个 checkpoint。</p>
+<hr />
+<h2>二、三档模型与统一架构：MoT</h2>
+<p><strong>傻瓜层：</strong> Edge 是车机上的小模型，Nano 是主力，Super 是大机器。它们不是三种架构，而是<strong>同一个架构的三种大小</strong>——所以你会看到同一个 API、同一种输入输出，只是慢一点或快一点。</p>
+<h3>技术版 / Technical</h3>
+<p><code>README.md:69</code>：</p>
+<blockquote>
+<p>"Cosmos 3, the current model family, is a suite of omnimodal world models built on a unified <strong>Mixture-of-Transformers</strong> architecture"</p>
+</blockquote>
+<p><code>docs/reference/models.md:51</code> 补充架构细节：MoT = <strong>自回归 Transformer（理解/推理）+ 扩散 Transformer（生成）共享权重 + 3D mRoPE</strong>。</p>
+<p>三档基础模型（<code>models.md:9-11</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>档位</th>
+<th style="text-align: right;">参数</th>
+<th>定位</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cosmos3-Edge</strong></td>
+<td style="text-align: right;"><strong>4B</strong></td>
+<td>边缘部署，NIM / Jetson / DGX Spark</td>
+</tr>
+<tr>
+<td><strong>Cosmos3-Nano</strong></td>
+<td style="text-align: right;"><strong>16B</strong></td>
+<td>主力，生成 + 推理 + 仿真 + 策略</td>
+</tr>
+<tr>
+<td><strong>Cosmos3-Super</strong></td>
+<td style="text-align: right;"><strong>64B</strong></td>
+<td>高质量生成，8 卡起步</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="图 2｜MoT 架构：同一套权重既做&quot;读&quot;也做&quot;写&quot;" src="2026-11-08_nvidia-cosmos_fig2-mot.svg" /></p>
+<p><strong>图 2｜Cosmos 3 的 MoT 架构</strong> —— 看这里：上半部分是<strong>读</strong>（文本/图像/视频 → 自回归 Transformer → 文字理解、任务规划）；下半部分是<strong>写</strong>（扩散 Transformer 逐去噪 → 视频/图像/音频/动作）。两块之间标着的<strong>共享权重</strong>和 <strong>3D mRoPE</strong> 是关键：同一个模型既能"看懂"也能"画出"，所以它才能一边看摄像头一边预测下一帧。</p>
+<p>仓库自带的官方架构图（原图 2404×1126，未修改）：</p>
+<p><img alt="NVIDIA Cosmos 3 官方架构图（原图，未改动）" src="2026-11-08_nvidia-cosmos_assets-architecture.png" /></p>
+<p><strong>图 3｜官方架构图（原图）</strong> —— 看这里：这是 NVIDIA 自己画的 MoT 结构，注意 AR 与 diffusion 两条通路在同一张权重表上。</p>
+<h3>推理与 rollout：文档说了什么，没说什么</h3>
+<p><strong>傻瓜层：</strong> 官方说法是"闭环自回归"——模型看着前几帧和动作指令，一帧一帧往下生成。但具体一帧怎么算、缓存什么、跑多少轮，仓库里一个字都没有。</p>
+<h3>技术版 / Technical</h3>
+<p>仓库对推理循环的<strong>唯一</strong>权威描述在 <code>docs/reference/models.md</code>：</p>
+<table>
+<thead>
+<tr>
+<th>环节</th>
+<th>仓库给出的</th>
+<th>出处</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>采样器</td>
+<td>明确提到 <strong>diffusion transformer</strong> 与 "denoising steps"；<strong>是否 flow matching、guidance/CFG 取值仓库未说明</strong>（只出现过 "CFG-parallel" 这一并行切分名词）</td>
+<td><code>models.md:51</code>、<code>cosmos3-nano-fp8-generator.md:36,145</code></td>
+</tr>
+<tr>
+<td>步数</td>
+<td><strong>"35 steps" 只存在于 HEAD 提交信息</strong>，任何 tracked 文件都没有</td>
+<td><code>git log -1</code> 正文</td>
+</tr>
+<tr>
+<td>混合精度策略</td>
+<td><strong>首尾各 3 步 W8A16，中间步 W8A8</strong>（FP8 页）</td>
+<td><code>cosmos3-nano-fp8-generator.md:145</code></td>
+</tr>
+<tr>
+<td>v2v-predict 条件</td>
+<td><strong>只喂前 5 帧</strong>（同分辨率，约 3 秒）</td>
+<td><code>models.md:73,83</code></td>
+</tr>
+<tr>
+<td>rollout 轮数</td>
+<td><strong>仓库未说明</strong>（只有"闭环""自回归"的定性描述）</td>
+<td>—</td>
+</tr>
+<tr>
+<td>action 注入位置</td>
+<td><strong>仓库未说明</strong>（只说明动作是"轨迹"条件）</td>
+<td>—</td>
+</tr>
+<tr>
+<td>缓存 / 重算</td>
+<td><strong>仓库未说明</strong></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>三、输入输出契约：这才是这个仓库真正的价值</h2>
+<p><strong>傻瓜层：</strong> 这张表就是 Cosmos 的"接口文档"。你要写代码，照着它拼输入输出就行。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>11 种 workflow 的完整 I/O 矩阵</strong>（<code>docs/reference/models.md:68-79</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>Workflow</th>
+<th>输入</th>
+<th>Super 输出</th>
+<th>Nano 输出</th>
+<th>Edge 输出</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>t2v</td>
+<td>Text</td>
+<td>Video 256p/480p/720p</td>
+<td>Video 256p/480p/720p</td>
+<td>Video 256p/480p</td>
+</tr>
+<tr>
+<td>t2sv</td>
+<td>Text</td>
+<td>Video <strong>with sound</strong> 256p/480p/720p</td>
+<td>同左</td>
+<td><strong>Not supported</strong></td>
+</tr>
+<tr>
+<td>i2v（首帧）</td>
+<td>Text + image (JPG/PNG/JPEG/WEBP)</td>
+<td>Video 256/480/720p</td>
+<td>同左</td>
+<td>Video 256/480p</td>
+</tr>
+<tr>
+<td>i2sv</td>
+<td>Text + image</td>
+<td>Video with sound 256/480/720p</td>
+<td>同左</td>
+<td><strong>Not supported</strong></td>
+</tr>
+<tr>
+<td>v2v — transfer</td>
+<td>Text + MP4（edge/blur/depth/segmentation map）</td>
+<td>Video 256/480/720p</td>
+<td>同左</td>
+<td><strong>Not supported</strong></td>
+</tr>
+<tr>
+<td>v2v — predict</td>
+<td>Text + MP4（<strong>前 5 帧</strong>）</td>
+<td>Video 256/480/720p</td>
+<td>同左</td>
+<td><strong>Not supported</strong></td>
+</tr>
+<tr>
+<td>t2i</td>
+<td>Text string</td>
+<td>Image 256/480/720p</td>
+<td>同左</td>
+<td><strong>Not supported</strong></td>
+</tr>
+<tr>
+<td>Visual reasoning</td>
+<td>Text, MP4, image</td>
+<td><strong>Text</strong></td>
+<td>Text</td>
+<td>Text</td>
+</tr>
+<tr>
+<td>Forward dynamics</td>
+<td>Text, image, video, <strong>action</strong></td>
+<td>Video 256/480/720p</td>
+<td>同左</td>
+<td>Video 256/480p</td>
+</tr>
+<tr>
+<td>Inverse dynamics</td>
+<td>Text, video</td>
+<td><strong>Action</strong></td>
+<td>Action</td>
+<td>Action</td>
+</tr>
+<tr>
+<td>Action policy</td>
+<td>Text, image, video</td>
+<td>Action + video</td>
+<td>Action + video</td>
+<td>Action + video</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="图 8｜契约速查：动作维度、分辨率、帧数上限" src="2026-11-08_nvidia-cosmos_fig3-contract.svg" /></p>
+<p><strong>图 8｜Cosmos 3 的生成契约</strong> —— 看这里：左上角是<strong>动作条件的六个维度</strong>（camera 9D 到 egocentric 57D），中间是<strong>三档分辨率</strong>（256p = 320×192、480p = 832×480、720p = 1280×720，都是 16:9），右边是<strong>能生成多长</strong>（通用 5–300 帧、默认 189 帧；Sim-Bimanual 可以到 901 帧）。</p>
+<p><strong>规格细则</strong>（<code>models.md:82-86, 94-117</code>）：</p>
+<ul>
+<li>分辨率换算：<strong>720p = 1280×720，480p = 832×480，256p = 320×192</strong></li>
+<li>通用生成设置：<strong>5–300 帧，默认 189 帧，帧率默认 24</strong>；Edge 为 <strong>50–150 帧</strong></li>
+<li><strong>动作条件维度</strong>：camera motion <strong>9D</strong> · AV <strong>9D</strong> · egocentric <strong>57D</strong> · single-arm <strong>10D</strong>（DROID/UR/Fractal/Bridge/UMI）· dual-arm <strong>20D</strong> · humanoid <strong>29D</strong>（AgiBot）</li>
+<li>相机阵列：<strong>1–11 视角</strong>（不含 LiDAR），支持标准与鱼眼</li>
+<li>输出格式：JPG、MP4、AAC-in-MP4（<strong>立体声 48 kHz</strong>）、JSON actions、text</li>
+<li>提示词建议长度：<strong>&lt; 300 words</strong></li>
+</ul>
+<p><strong>10 个示例 / 后训练 checkpoint</strong>（<code>models.md:15-26</code>，与 <code>README.md:142-153</code> 重复列出，<code>AGENTS.md:13</code> 要求两个文件在同一 commit 里同步改）：</p>
+<table>
+<thead>
+<tr>
+<th>Checkpoint</th>
+<th>Base</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cosmos3-Nano-Sim-Auto</td>
+<td>Nano</td>
+<td>闭环驾驶仿真：多视角相机视频 + LiDAR</td>
+</tr>
+<tr>
+<td>Cosmos3-Nano-Transfer-Auto</td>
+<td>Nano</td>
+<td>多视角驾驶视频合成数据，<strong>最多 11 路相机 + LiDAR</strong></td>
+</tr>
+<tr>
+<td>Cosmos3-Nano-Sim-Bimanual</td>
+<td>Nano</td>
+<td>闭环仿真——action-conditioned 自回归 rollout</td>
+</tr>
+<tr>
+<td>Cosmos3-Nano-Sim-Transfer</td>
+<td>Nano</td>
+<td>自回归迁移，带 depth / segmentation / edge / blur 控制</td>
+</tr>
+<tr>
+<td>Cosmos3-Super-Text2Image</td>
+<td>Super</td>
+<td>高质量文生图</td>
+</tr>
+<tr>
+<td>Cosmos3-Super-Text2Image-4Step</td>
+<td>Super</td>
+<td>高质量文生图，<strong>快 17–25×</strong></td>
+</tr>
+<tr>
+<td>Cosmos3-Super-Image2Video</td>
+<td>Super</td>
+<td>高质量图生视频</td>
+</tr>
+<tr>
+<td>Cosmos3-Super-Image2Video-4Step</td>
+<td>Super</td>
+<td>高质量图生视频，<strong>快 17–25×</strong></td>
+</tr>
+<tr>
+<td>Cosmos3-Nano-Policy-DROID</td>
+<td>Nano</td>
+<td>"Open SOTA" DROID 机器人策略</td>
+</tr>
+<tr>
+<td>Cosmos3-Edge-Policy-DROID</td>
+<td>Edge</td>
+<td>边缘规模的 DROID 策略</td>
+</tr>
+</tbody>
+</table>
+<p><strong>6 个 FP8 量化 checkpoint</strong>（<code>models.md:28-42</code>）：<code>Cosmos3-Nano-FP8</code>、<code>Cosmos3-Super-FP8</code>，以及 4 个 Super 专项（Text2Image / Text2Image-4Step / Image2Video / Image2Video-4Step，位于各自仓库的 <strong><code>fp8</code> 分支</strong>）。<code>models.md:44-47</code> 补充："FP8 weights retain the exported activation policy: the generator can use A16 on boundary denoising steps and its reasoner, while standalone reasoner inference follows its own backend policy."</p>
+<p><strong>四个 Simulation checkpoint 的 I/O</strong>（<code>models.md:94-104</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>Checkpoint</th>
+<th>输入</th>
+<th>输出</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sim-Auto</td>
+<td>Text + world-scenario map 控制视频（车道线、物体 cuboid），每相机一路 + LiDAR 一路</td>
+<td>同步多视角视频 + LiDAR，<strong>闭环自回归生成</strong>；<strong>10–30 FPS，480p 或 720p</strong></td>
+</tr>
+<tr>
+<td>Transfer-Auto</td>
+<td>同上</td>
+<td>同步多视角视频 + LiDAR，<strong>最多 300 帧</strong>；10–30 FPS，480p/720p</td>
+</tr>
+<tr>
+<td>Sim-Bimanual</td>
+<td>起始图 + 逐帧 action 与相机运动（JSON），text 可选</td>
+<td><strong>逐帧生成</strong>视频；<strong>最多 901 帧 @30 FPS，480p</strong>；本体 AgiBot、YAM</td>
+</tr>
+<tr>
+<td>Sim-Transfer</td>
+<td>Text + 模拟器渲染的控制视频：depth / segmentation / edge / blur</td>
+<td>与输入几何对齐的写实视频；<strong>最多 600 帧 @30 FPS，480p</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>models.md:101-104</code> 另称：<strong>Sim-Transfer 能在单台 GB200 上实时并行跑 8 个环境</strong>；测试硬件 H100 与 B200；加速引擎为 PyTorch、vLLM-Omni、FlashDreams（sim-auto 与 sim-bimanual）、SGLang。</p>
+<hr />
+<h2>四、训练与后训练：只有方法名</h2>
+<p><strong>傻瓜层：</strong> 仓库对"怎么训出来的"几乎闭口不谈。四个词——SFT、LoRA、强化学习、蒸馏——就完了，连数据是啥都没说。</p>
+<h3>技术版 / Technical</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>仓库给出的</th>
+<th>出处</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>预训练数据</td>
+<td><strong>仓库未说明</strong>（无数据集名、无规模、无 token/小时数）</td>
+<td>—</td>
+</tr>
+<tr>
+<td>后训练数据集</td>
+<td><strong>仓库未说明</strong>（<code>git grep -i "Reason1"</code> → 0 命中）</td>
+<td>—</td>
+</tr>
+<tr>
+<td>后训练方法</td>
+<td>只列<strong>方法名</strong>：SFT、LoRA、<strong>RL</strong>、distillation</td>
+<td><code>README.md:80,162</code></td>
+</tr>
+<tr>
+<td>RL 具体算法</td>
+<td><strong>仓库未说明</strong>（<code>git grep -i "GRPO"</code> 仅命中 GIF 二进制假阳性；<code>RLHF</code> 0 命中）</td>
+<td>实测</td>
+</tr>
+<tr>
+<td>数据管线</td>
+<td>由 <strong>Cosmos Curator</strong>（分布式处理/标注/过滤/去重）与 <strong>Cosmos Evaluator</strong> 承担，二者均为<strong>外链仓库</strong></td>
+<td><code>README.md:163-164</code></td>
+</tr>
+<tr>
+<td>tokenizer / latent 形状 / 压缩率</td>
+<td><strong>仓库未说明</strong>（<code>git grep -i tokenizer</code> → 0 命中，没有 16×16×16 之类信息）</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>评测基准名（仅名字，无分数）</strong> —— <code>COOKBOOK.md:86-87</code>：</p>
+<ul>
+<li>生成：<strong>PAI-Bench-G</strong>（video）、<strong>PAI-Bench-C</strong>（controlled video）、<strong>PhysicsIQ</strong>（physics）、<strong>UniGenBench</strong>（images）、<strong>RBench</strong>（robotics）</li>
+<li>推理：<strong>TAR &amp; VANTAGE</strong>，用 <strong>VLMEvalKit</strong>，跑在任意 OpenAI 兼容端点上</li>
+<li>策略闭环评测（仅名字）：<strong>DROID、LIBERO、RoboCasa</strong> —— <code>COOKBOOK.md:71</code></li>
+</ul>
+<blockquote>
+<p>注意：<strong>MJSynth / Physion 这类任务在本仓库不存在</strong>（0 命中）。最接近物理评测的是 <strong>PhysicsIQ</strong>。</p>
+</blockquote>
+<p><strong>物理 AI 落地场景</strong>（<code>README.md:67</code>）：robotics、autonomous vehicles、smart infrastructure、manufacturing、healthcare、agriculture；行业标签码 <code>ANY/AV/ROB/INFRA/MFG/AG/MED</code>（<code>COOKBOOK.md:32-40</code>）。README 演示网格另展示 6 类能力：物理感知生成、世界场景迁移、动作策略、驾驶仿真、action-conditioned 世界模型、世界推理（<code>README.md:26-55</code>）。</p>
+<hr />
+<h2>五、评测：这个仓库只有速度，没有质量</h2>
+<p><strong>傻瓜层：</strong> 仓库里能查到的数字，全是"跑一次多少秒"。至于"生成的视频好不好、物理对不对"，一个分数都没有，只有基准的名字。</p>
+<h3>技术版 / Technical</h3>
+<p><code>docs/reference/inference_benchmarks.md:3</code> 原文：</p>
+<blockquote>
+<p>"This page is about <strong>speed</strong> (latency, throughput). For <strong>quality</strong> benchmarks (PAIBench, Physics-IQ, VLMEvalKit, ...), see <code>evaluation/</code>."</p>
+</blockquote>
+<p><code>:7</code> 强调："<strong>Empty cells mean that combination has not been measured yet</strong> — not that it is unsupported."</p>
+<p><strong>工作负载口径</strong>：Nano/Super 主表 = <strong>189 帧 @24 FPS，batch 1</strong>，<strong>1 GPU</strong>（Super 部分区块为 8 卡，见下文）；Edge 页 = <strong>121 帧</strong>。</p>
+<h3>5.1 Cosmos3-Nano (16B) BF16 —— t2v / i2v / t2i（秒）</h3>
+<table>
+<thead>
+<tr>
+<th>GPU</th>
+<th>引擎</th>
+<th style="text-align: right;">t2v 256p</th>
+<th style="text-align: right;">t2v 480p</th>
+<th style="text-align: right;">t2v 720p</th>
+<th style="text-align: right;">i2v 256p</th>
+<th style="text-align: right;">i2v 480p</th>
+<th style="text-align: right;">i2v 720p</th>
+<th style="text-align: right;">t2i 256p</th>
+<th style="text-align: right;">t2i 480p</th>
+<th style="text-align: right;">t2i 720p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RTX PRO 6000 Blackwell</td>
+<td>PyTorch</td>
+<td style="text-align: right;">13.95</td>
+<td style="text-align: right;">180.81</td>
+<td style="text-align: right;">786.37</td>
+<td style="text-align: right;">14.08</td>
+<td style="text-align: right;">182.14</td>
+<td style="text-align: right;">788.80</td>
+<td style="text-align: right;">2.99</td>
+<td style="text-align: right;">4.51</td>
+<td style="text-align: right;">7.12</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">10.65</td>
+<td style="text-align: right;">105.61</td>
+<td style="text-align: right;">371.53</td>
+<td style="text-align: right;">11.04</td>
+<td style="text-align: right;">107.77</td>
+<td style="text-align: right;">376.44</td>
+<td style="text-align: right;">1.59</td>
+<td style="text-align: right;">2.87</td>
+<td style="text-align: right;">4.99</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">11.20</td>
+<td style="text-align: right;">112.00</td>
+<td style="text-align: right;">392.00</td>
+<td style="text-align: right;">12.00</td>
+<td style="text-align: right;">112.00</td>
+<td style="text-align: right;">397.00</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">4.00</td>
+<td style="text-align: right;">5.00</td>
+</tr>
+<tr>
+<td></td>
+<td>TensorRT-LLM</td>
+<td style="text-align: right;">10.27</td>
+<td style="text-align: right;">102.55</td>
+<td style="text-align: right;">369.78</td>
+<td style="text-align: right;">10.77</td>
+<td style="text-align: right;">105.03</td>
+<td style="text-align: right;">374.89</td>
+<td style="text-align: right;">1.18</td>
+<td style="text-align: right;">2.35</td>
+<td style="text-align: right;">4.50</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: right;"><strong>5.06</strong></td>
+<td style="text-align: right;"><strong>46.32</strong></td>
+<td style="text-align: right;"><strong>170.57</strong></td>
+<td style="text-align: right;"><strong>4.90</strong></td>
+<td style="text-align: right;"><strong>46.43</strong></td>
+<td style="text-align: right;"><strong>171.34</strong></td>
+<td style="text-align: right;"><strong>0.72</strong></td>
+<td style="text-align: right;"><strong>1.00</strong></td>
+<td style="text-align: right;"><strong>1.48</strong></td>
+</tr>
+<tr>
+<td>H20</td>
+<td>PyTorch</td>
+<td style="text-align: right;">30.57</td>
+<td style="text-align: right;">257.51</td>
+<td style="text-align: right;">931.39</td>
+<td style="text-align: right;">31.36</td>
+<td style="text-align: right;">257.10</td>
+<td style="text-align: right;">933.07</td>
+<td style="text-align: right;">3.06</td>
+<td style="text-align: right;">6.51</td>
+<td style="text-align: right;">12.31</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">28.58</td>
+<td style="text-align: right;">256.97</td>
+<td style="text-align: right;">929.81</td>
+<td style="text-align: right;">29.50</td>
+<td style="text-align: right;">261.56</td>
+<td style="text-align: right;">940.16</td>
+<td style="text-align: right;">1.73</td>
+<td style="text-align: right;">4.92</td>
+<td style="text-align: right;">10.73</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">30.20</td>
+<td style="text-align: right;">258.00</td>
+<td style="text-align: right;">926.00</td>
+<td style="text-align: right;">31.00</td>
+<td style="text-align: right;">258.00</td>
+<td style="text-align: right;">925.00</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">6.00</td>
+<td style="text-align: right;">10.00</td>
+</tr>
+<tr>
+<td></td>
+<td>TensorRT-LLM</td>
+<td style="text-align: right;">26.92</td>
+<td style="text-align: right;">251.79</td>
+<td style="text-align: right;">908.90</td>
+<td style="text-align: right;">28.07</td>
+<td style="text-align: right;">254.79</td>
+<td style="text-align: right;">915.71</td>
+<td style="text-align: right;">1.94</td>
+<td style="text-align: right;">5.55</td>
+<td style="text-align: right;">11.56</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: right;">11.78</td>
+<td style="text-align: right;">86.02</td>
+<td style="text-align: right;">282.28</td>
+<td style="text-align: right;">11.67</td>
+<td style="text-align: right;">86.66</td>
+<td style="text-align: right;">282.41</td>
+<td style="text-align: right;">1.09</td>
+<td style="text-align: right;">1.61</td>
+<td style="text-align: right;">2.80</td>
+</tr>
+<tr>
+<td>H100 NVL</td>
+<td>PyTorch</td>
+<td style="text-align: right;">10.03</td>
+<td style="text-align: right;">84.12</td>
+<td style="text-align: right;">297.27</td>
+<td style="text-align: right;">10.19</td>
+<td style="text-align: right;">84.50</td>
+<td style="text-align: right;">298.57</td>
+<td style="text-align: right;">2.77</td>
+<td style="text-align: right;">2.83</td>
+<td style="text-align: right;">4.21</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">9.25</td>
+<td style="text-align: right;">80.75</td>
+<td style="text-align: right;">281.99</td>
+<td style="text-align: right;">9.62</td>
+<td style="text-align: right;">82.61</td>
+<td style="text-align: right;">286.19</td>
+<td style="text-align: right;"><strong>1.55</strong></td>
+<td style="text-align: right;"><strong>1.92</strong></td>
+<td style="text-align: right;"><strong>3.43</strong></td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">11.00</td>
+<td style="text-align: right;">90.00</td>
+<td style="text-align: right;">324.20</td>
+<td style="text-align: right;">11.00</td>
+<td style="text-align: right;">91.00</td>
+<td style="text-align: right;">325.20</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">4.00</td>
+</tr>
+<tr>
+<td>H200 NVL</td>
+<td>PyTorch</td>
+<td style="text-align: right;">8.17</td>
+<td style="text-align: right;">69.79</td>
+<td style="text-align: right;">244.39</td>
+<td style="text-align: right;">8.27</td>
+<td style="text-align: right;">69.99</td>
+<td style="text-align: right;">246.62</td>
+<td style="text-align: right;">2.75</td>
+<td style="text-align: right;">2.85</td>
+<td style="text-align: right;">3.58</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">7.44</td>
+<td style="text-align: right;">64.58</td>
+<td style="text-align: right;">240.05</td>
+<td style="text-align: right;">7.83</td>
+<td style="text-align: right;">66.39</td>
+<td style="text-align: right;">243.52</td>
+<td style="text-align: right;"><strong>1.53</strong></td>
+<td style="text-align: right;"><strong>1.58</strong></td>
+<td style="text-align: right;"><strong>2.81</strong></td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">74.00</td>
+<td style="text-align: right;">276.20</td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">74.00</td>
+<td style="text-align: right;">275.20</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">4.00</td>
+</tr>
+<tr>
+<td>H100 80GB HBM3</td>
+<td>PyTorch</td>
+<td style="text-align: right;">7.61</td>
+<td style="text-align: right;">59.83</td>
+<td style="text-align: right;">207.78</td>
+<td style="text-align: right;">7.64</td>
+<td style="text-align: right;">59.95</td>
+<td style="text-align: right;">207.87</td>
+<td style="text-align: right;">3.01</td>
+<td style="text-align: right;">3.01</td>
+<td style="text-align: right;">3.45</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">6.97</td>
+<td style="text-align: right;">58.17</td>
+<td style="text-align: right;">202.29</td>
+<td style="text-align: right;">7.37</td>
+<td style="text-align: right;">59.77</td>
+<td style="text-align: right;">205.97</td>
+<td style="text-align: right;">1.61</td>
+<td style="text-align: right;">1.53</td>
+<td style="text-align: right;">2.61</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">68.00</td>
+<td style="text-align: right;">240.00</td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">68.00</td>
+<td style="text-align: right;">239.80</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">4.00</td>
+</tr>
+<tr>
+<td></td>
+<td>TensorRT-LLM</td>
+<td style="text-align: right;">6.50</td>
+<td style="text-align: right;">60.10</td>
+<td style="text-align: right;">223.51</td>
+<td style="text-align: right;">6.90</td>
+<td style="text-align: right;">63.24</td>
+<td style="text-align: right;">226.15</td>
+<td style="text-align: right;">1.02</td>
+<td style="text-align: right;">1.30</td>
+<td style="text-align: right;">2.63</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: right;"><strong>3.34</strong></td>
+<td style="text-align: right;"><strong>24.71</strong></td>
+<td style="text-align: right;"><strong>86.16</strong></td>
+<td style="text-align: right;"><strong>3.39</strong></td>
+<td style="text-align: right;"><strong>24.65</strong></td>
+<td style="text-align: right;"><strong>86.60</strong></td>
+<td style="text-align: right;"><strong>1.02</strong>（与 TRT-LLM 并列）</td>
+<td style="text-align: right;"><strong>1.04</strong></td>
+<td style="text-align: right;"><strong>1.15</strong></td>
+</tr>
+<tr>
+<td>H200 141GB HBM3</td>
+<td>PyTorch</td>
+<td style="text-align: right;">7.53</td>
+<td style="text-align: right;">60.18</td>
+<td style="text-align: right;">214.28</td>
+<td style="text-align: right;">7.65</td>
+<td style="text-align: right;">60.51</td>
+<td style="text-align: right;">214.80</td>
+<td style="text-align: right;">2.96</td>
+<td style="text-align: right;">3.04</td>
+<td style="text-align: right;">3.28</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">6.79</td>
+<td style="text-align: right;">58.14</td>
+<td style="text-align: right;">208.36</td>
+<td style="text-align: right;">7.28</td>
+<td style="text-align: right;">59.64</td>
+<td style="text-align: right;">209.65</td>
+<td style="text-align: right;">1.57</td>
+<td style="text-align: right;">1.52</td>
+<td style="text-align: right;">2.60</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">67.00</td>
+<td style="text-align: right;">239.60</td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">67.20</td>
+<td style="text-align: right;">240.00</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">4.00</td>
+</tr>
+<tr>
+<td></td>
+<td>TensorRT-LLM</td>
+<td style="text-align: right;">6.42</td>
+<td style="text-align: right;">60.57</td>
+<td style="text-align: right;">225.06</td>
+<td style="text-align: right;">6.74</td>
+<td style="text-align: right;">63.54</td>
+<td style="text-align: right;">231.15</td>
+<td style="text-align: right;">1.05</td>
+<td style="text-align: right;">1.30</td>
+<td style="text-align: right;">2.60</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: right;"><strong>3.15</strong></td>
+<td style="text-align: right;"><strong>24.62</strong></td>
+<td style="text-align: right;"><strong>85.55</strong></td>
+<td style="text-align: right;"><strong>3.16</strong></td>
+<td style="text-align: right;"><strong>24.67</strong></td>
+<td style="text-align: right;"><strong>87.67</strong></td>
+<td style="text-align: right;"><strong>1.02</strong></td>
+<td style="text-align: right;"><strong>1.05</strong></td>
+<td style="text-align: right;"><strong>1.08</strong></td>
+</tr>
+<tr>
+<td>B200</td>
+<td>PyTorch</td>
+<td style="text-align: right;">4.56</td>
+<td style="text-align: right;">33.20</td>
+<td style="text-align: right;">114.85</td>
+<td style="text-align: right;">4.60</td>
+<td style="text-align: right;">33.08</td>
+<td style="text-align: right;">113.90</td>
+<td style="text-align: right;">2.68</td>
+<td style="text-align: right;">2.75</td>
+<td style="text-align: right;">2.87</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">4.03</td>
+<td style="text-align: right;">32.04</td>
+<td style="text-align: right;">107.79</td>
+<td style="text-align: right;">4.33</td>
+<td style="text-align: right;">33.09</td>
+<td style="text-align: right;">110.08</td>
+<td style="text-align: right;">1.49</td>
+<td style="text-align: right;">1.20</td>
+<td style="text-align: right;">1.76</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">7.00</td>
+<td style="text-align: right;">36.80</td>
+<td style="text-align: right;">117.00</td>
+<td style="text-align: right;">7.00</td>
+<td style="text-align: right;">37.00</td>
+<td style="text-align: right;">116.00</td>
+<td style="text-align: right;">3.00</td>
+<td style="text-align: right;">3.20</td>
+<td style="text-align: right;">3.00</td>
+</tr>
+<tr>
+<td></td>
+<td>TensorRT-LLM</td>
+<td style="text-align: right;">3.43</td>
+<td style="text-align: right;">28.28</td>
+<td style="text-align: right;">100.02</td>
+<td style="text-align: right;">3.70</td>
+<td style="text-align: right;">29.33</td>
+<td style="text-align: right;">102.35</td>
+<td style="text-align: right;">0.86</td>
+<td style="text-align: right;">0.88</td>
+<td style="text-align: right;">1.40</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: right;"><strong>2.00</strong></td>
+<td style="text-align: right;"><strong>13.71</strong></td>
+<td style="text-align: right;"><strong>49.86</strong></td>
+<td style="text-align: right;"><strong>1.95</strong></td>
+<td style="text-align: right;"><strong>13.76</strong></td>
+<td style="text-align: right;"><strong>49.16</strong></td>
+<td style="text-align: right;"><strong>0.58</strong></td>
+<td style="text-align: right;"><strong>0.63</strong></td>
+<td style="text-align: right;"><strong>0.67</strong></td>
+</tr>
+<tr>
+<td>B300</td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">4.46</td>
+<td style="text-align: right;">32.18</td>
+<td style="text-align: right;">102.10</td>
+<td style="text-align: right;">5.61</td>
+<td style="text-align: right;">33.45</td>
+<td style="text-align: right;">104.75</td>
+<td style="text-align: right;">1.97</td>
+<td style="text-align: right;">1.81</td>
+<td style="text-align: right;">2.34</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">6.40</td>
+<td style="text-align: right;">39.32</td>
+<td style="text-align: right;">121.74</td>
+<td style="text-align: right;">13.40</td>
+<td style="text-align: right;">49.59</td>
+<td style="text-align: right;">131.25</td>
+<td style="text-align: right;">3.86</td>
+<td style="text-align: right;">3.86</td>
+<td style="text-align: right;">3.99</td>
+</tr>
+<tr>
+<td></td>
+<td>TensorRT-LLM</td>
+<td style="text-align: right;">3.31</td>
+<td style="text-align: right;">26.52</td>
+<td style="text-align: right;">91.15</td>
+<td style="text-align: right;">3.70</td>
+<td style="text-align: right;">27.73</td>
+<td style="text-align: right;">93.88</td>
+<td style="text-align: right;">1.36</td>
+<td style="text-align: right;">1.30</td>
+<td style="text-align: right;">1.40</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: right;"><strong>1.98</strong></td>
+<td style="text-align: right;"><strong>13.10</strong></td>
+<td style="text-align: right;"><strong>45.76</strong></td>
+<td style="text-align: right;"><strong>2.07</strong></td>
+<td style="text-align: right;"><strong>13.63</strong></td>
+<td style="text-align: right;"><strong>46.81</strong></td>
+<td style="text-align: right;"><strong>0.72</strong></td>
+<td style="text-align: right;"><strong>0.84</strong></td>
+<td style="text-align: right;"><strong>0.87</strong></td>
+</tr>
+</tbody>
+</table>
+<p><img alt="图 9｜Nano 在不同 GPU 上的实际耗时" src="2026-11-08_nvidia-cosmos_fig4-latency-nano.svg" /></p>
+<p><strong>图 9｜同一个 Nano(16B)，不同卡差 6 倍</strong> —— 看这里：横条是 <strong>i2v 720p、189 帧</strong>的端到端秒数，从 B300 的 <strong>46.81 秒</strong>一路到 H20 的 <strong>282.41 秒</strong>；NIM 那一排（橙色）永远最快，而 Diffusers 在 B300 上反而比 B200 慢（131.25 vs 116.00）——<strong>换新卡不等于换新引擎</strong>。</p>
+<h3>5.2 Cosmos3-Super (64B) BF16 —— t2v / i2v / t2i（秒）</h3>
+<blockquote>
+<p><strong>注意 GPU 数随区块变化</strong>：RTX PRO 6000 / H20 / H100 NVL / H100 80GB 用 <strong>8 卡</strong>；H200 NVL、H200 141GB、B200、B300 用 <strong>1 卡</strong>。直接横比会得出错误结论。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>GPU</th>
+<th>引擎</th>
+<th style="text-align: center;">卡数</th>
+<th style="text-align: right;">t2v 256p</th>
+<th style="text-align: right;">t2v 480p</th>
+<th style="text-align: right;">t2v 720p</th>
+<th style="text-align: right;">i2v 256p</th>
+<th style="text-align: right;">i2v 480p</th>
+<th style="text-align: right;">i2v 720p</th>
+<th style="text-align: right;">t2i 256p</th>
+<th style="text-align: right;">t2i 480p</th>
+<th style="text-align: right;">t2i 720p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RTX PRO 6000 Blackwell</td>
+<td>PyTorch</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">66.04</td>
+<td style="text-align: right;">118.90</td>
+<td style="text-align: right;">427.16</td>
+<td style="text-align: right;">66.54</td>
+<td style="text-align: right;">118.95</td>
+<td style="text-align: right;">427.96</td>
+<td style="text-align: right;">93.18</td>
+<td style="text-align: right;">93.39</td>
+<td style="text-align: right;">93.47</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">11.66</td>
+<td style="text-align: right;">80.94</td>
+<td style="text-align: right;">240.27</td>
+<td style="text-align: right;">3.11</td>
+<td style="text-align: right;">3.54</td>
+<td style="text-align: right;">5.70</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">25.39</td>
+<td style="text-align: right;">154.25</td>
+<td style="text-align: right;">437.57</td>
+<td style="text-align: right;">26.29</td>
+<td style="text-align: right;">156.16</td>
+<td style="text-align: right;">540.65</td>
+<td style="text-align: right;">16.90</td>
+<td style="text-align: right;">17.52</td>
+<td style="text-align: right;">16.73</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;"><strong>4.15</strong></td>
+<td style="text-align: right;"><strong>27.18</strong></td>
+<td style="text-align: right;"><strong>91.15</strong></td>
+<td style="text-align: right;"><strong>4.01</strong></td>
+<td style="text-align: right;"><strong>27.39</strong></td>
+<td style="text-align: right;"><strong>91.65</strong></td>
+<td style="text-align: right;"><strong>1.52</strong></td>
+<td style="text-align: right;"><strong>1.64</strong></td>
+<td style="text-align: right;"><strong>1.61</strong></td>
+</tr>
+<tr>
+<td>H20</td>
+<td>PyTorch</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">27.72</td>
+<td style="text-align: right;">152.46</td>
+<td style="text-align: right;">492.41</td>
+<td style="text-align: right;">28.22</td>
+<td style="text-align: right;">153.19</td>
+<td style="text-align: right;">491.93</td>
+<td style="text-align: right;">14.18</td>
+<td style="text-align: right;">16.46</td>
+<td style="text-align: right;">20.92</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">19.65</td>
+<td style="text-align: right;">148.77</td>
+<td style="text-align: right;">488.51</td>
+<td style="text-align: right;">5.12</td>
+<td style="text-align: right;">5.44</td>
+<td style="text-align: right;">8.85</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">26.66</td>
+<td style="text-align: right;">161.49</td>
+<td style="text-align: right;">517.37</td>
+<td style="text-align: right;">27.65</td>
+<td style="text-align: right;">165.91</td>
+<td style="text-align: right;">530.44</td>
+<td style="text-align: right;">18.29</td>
+<td style="text-align: right;">18.48</td>
+<td style="text-align: right;">18.46</td>
+</tr>
+<tr>
+<td></td>
+<td>NIM</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">6.79</td>
+<td style="text-align: right;">51.83</td>
+<td style="text-align: right;">191.74</td>
+<td style="text-align: right;">6.60</td>
+<td style="text-align: right;">52.28</td>
+<td style="text-align: right;">191.86</td>
+<td style="text-align: right;">1.01</td>
+<td style="text-align: right;">2.27</td>
+<td style="text-align: right;">1.93</td>
+</tr>
+<tr>
+<td>H100 NVL</td>
+<td>PyTorch</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">16.83</td>
+<td style="text-align: right;">64.14</td>
+<td style="text-align: right;">186.19</td>
+<td style="text-align: right;">16.96</td>
+<td style="text-align: right;">64.17</td>
+<td style="text-align: right;">186.47</td>
+<td style="text-align: right;">19.86</td>
+<td style="text-align: right;">19.80</td>
+<td style="text-align: right;">19.87</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">8.48</td>
+<td style="text-align: right;">59.44</td>
+<td style="text-align: right;">212.53</td>
+<td style="text-align: right;">3.54</td>
+<td style="text-align: right;">3.48</td>
+<td style="text-align: right;">4.11</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">24.21</td>
+<td style="text-align: right;">108.70</td>
+<td style="text-align: right;">322.28</td>
+<td style="text-align: right;">25.45</td>
+<td style="text-align: right;">112.36</td>
+<td style="text-align: right;">325.56</td>
+<td style="text-align: right;">16.56</td>
+<td style="text-align: right;">16.60</td>
+<td style="text-align: right;">16.88</td>
+</tr>
+<tr>
+<td>H200 NVL</td>
+<td>PyTorch</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">24.78</td>
+<td style="text-align: right;">47.69</td>
+<td style="text-align: right;">142.35</td>
+<td style="text-align: right;">24.70</td>
+<td style="text-align: right;">47.60</td>
+<td style="text-align: right;">141.62</td>
+<td style="text-align: right;">32.86</td>
+<td style="text-align: right;">33.05</td>
+<td style="text-align: right;">33.16</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">27.54</td>
+<td style="text-align: right;">252.33</td>
+<td style="text-align: right;">911.49</td>
+<td style="text-align: right;">27.90</td>
+<td style="text-align: right;">254.29</td>
+<td style="text-align: right;">915.05</td>
+<td style="text-align: right;">2.73</td>
+<td style="text-align: right;">6.28</td>
+<td style="text-align: right;">11.02</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">33.00</td>
+<td style="text-align: right;">286.80</td>
+<td style="text-align: right;">1036.00</td>
+<td style="text-align: right;">33.00</td>
+<td style="text-align: right;">287.20</td>
+<td style="text-align: right;">1034.60</td>
+<td style="text-align: right;">5.00</td>
+<td style="text-align: right;">8.00</td>
+<td style="text-align: right;">12.00</td>
+</tr>
+<tr>
+<td>H100 80GB HBM3</td>
+<td>vLLM-Omni</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;"><em>(未测)</em></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">6.48</td>
+<td style="text-align: right;">38.31</td>
+<td style="text-align: right;"><em>(空，见注 8)</em></td>
+<td style="text-align: right;">5.09</td>
+<td style="text-align: right;">5.16</td>
+<td style="text-align: right;">4.91</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">19.40</td>
+<td style="text-align: right;">56.39</td>
+<td style="text-align: right;">174.57</td>
+<td style="text-align: right;">19.98</td>
+<td style="text-align: right;">55.63</td>
+<td style="text-align: right;">184.81</td>
+<td style="text-align: right;">17.97</td>
+<td style="text-align: right;">18.03</td>
+<td style="text-align: right;">19.28</td>
+</tr>
+<tr>
+<td>H200 141GB HBM3</td>
+<td>PyTorch</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: right;">11.82</td>
+<td style="text-align: right;">41.78</td>
+<td style="text-align: right;">123.49</td>
+<td style="text-align: right;">11.80</td>
+<td style="text-align: right;">42.10</td>
+<td style="text-align: right;">123.57</td>
+<td style="text-align: right;">13.48</td>
+<td style="text-align: right;">13.53</td>
+<td style="text-align: right;">13.50</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">25.61</td>
+<td style="text-align: right;">219.11</td>
+<td style="text-align: right;">769.63</td>
+<td style="text-align: right;">25.47</td>
+<td style="text-align: right;">220.70</td>
+<td style="text-align: right;">766.33</td>
+<td style="text-align: right;">2.83</td>
+<td style="text-align: right;">5.70</td>
+<td style="text-align: right;">10.24</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">31.00</td>
+<td style="text-align: right;">251.60</td>
+<td style="text-align: right;">886.20</td>
+<td style="text-align: right;">31.00</td>
+<td style="text-align: right;">249.20</td>
+<td style="text-align: right;">879.20</td>
+<td style="text-align: right;">5.00</td>
+<td style="text-align: right;">8.00</td>
+<td style="text-align: right;">11.00</td>
+</tr>
+<tr>
+<td></td>
+<td>TensorRT-LLM</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">24.21</td>
+<td style="text-align: right;">234.08</td>
+<td style="text-align: right;">853.44</td>
+<td style="text-align: right;">24.46</td>
+<td style="text-align: right;">230.02</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">2.24</td>
+<td style="text-align: right;">5.10</td>
+<td style="text-align: right;">10.77</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">9.75</td>
+<td style="text-align: right;">83.09</td>
+<td style="text-align: right;">298.16</td>
+<td style="text-align: right;">9.27</td>
+<td style="text-align: right;">83.86</td>
+<td style="text-align: right;">300.45</td>
+<td style="text-align: right;">1.68</td>
+<td style="text-align: right;">1.74</td>
+<td style="text-align: right;">2.53</td>
+</tr>
+<tr>
+<td>B200</td>
+<td>PyTorch</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">14.66</td>
+<td style="text-align: right;">114.38</td>
+<td style="text-align: right;">407.50</td>
+<td style="text-align: right;">14.71</td>
+<td style="text-align: right;">112.40</td>
+<td style="text-align: right;">397.31</td>
+<td style="text-align: right;">4.51</td>
+<td style="text-align: right;">4.78</td>
+<td style="text-align: right;">7.25</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">13.84</td>
+<td style="text-align: right;">114.08</td>
+<td style="text-align: right;">383.84</td>
+<td style="text-align: right;">14.13</td>
+<td style="text-align: right;">115.17</td>
+<td style="text-align: right;">386.35</td>
+<td style="text-align: right;">2.32</td>
+<td style="text-align: right;">3.29</td>
+<td style="text-align: right;">5.99</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">19.00</td>
+<td style="text-align: right;">127.20</td>
+<td style="text-align: right;">414.40</td>
+<td style="text-align: right;">19.20</td>
+<td style="text-align: right;">127.00</td>
+<td style="text-align: right;">414.80</td>
+<td style="text-align: right;">4.40</td>
+<td style="text-align: right;">6.00</td>
+<td style="text-align: right;">8.00</td>
+</tr>
+<tr>
+<td></td>
+<td>TensorRT-LLM</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">12.32</td>
+<td style="text-align: right;">104.63</td>
+<td style="text-align: right;">367.12</td>
+<td style="text-align: right;">12.67</td>
+<td style="text-align: right;">105.74</td>
+<td style="text-align: right;">372.60</td>
+<td style="text-align: right;">1.69</td>
+<td style="text-align: right;">2.84</td>
+<td style="text-align: right;">5.72</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;"><strong>5.43</strong></td>
+<td style="text-align: right;"><strong>47.71</strong></td>
+<td style="text-align: right;"><strong>175.45</strong></td>
+<td style="text-align: right;"><strong>5.18</strong></td>
+<td style="text-align: right;"><strong>47.54</strong></td>
+<td style="text-align: right;"><strong>180.21</strong></td>
+<td style="text-align: right;"><strong>0.93</strong></td>
+<td style="text-align: right;"><strong>0.95</strong></td>
+<td style="text-align: right;"><strong>1.36</strong></td>
+</tr>
+<tr>
+<td>B300</td>
+<td>vLLM-Omni</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">14.57</td>
+<td style="text-align: right;">109.03</td>
+<td style="text-align: right;">366.66</td>
+<td style="text-align: right;">14.14</td>
+<td style="text-align: right;">111.42</td>
+<td style="text-align: right;">368.73</td>
+<td style="text-align: right;">5.05</td>
+<td style="text-align: right;">3.79</td>
+<td style="text-align: right;">7.08</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">17.73</td>
+<td style="text-align: right;">125.70</td>
+<td style="text-align: right;">398.94</td>
+<td style="text-align: right;">25.21</td>
+<td style="text-align: right;">132.23</td>
+<td style="text-align: right;">410.81</td>
+<td style="text-align: right;">6.49</td>
+<td style="text-align: right;">6.76</td>
+<td style="text-align: right;">7.11</td>
+</tr>
+<tr>
+<td></td>
+<td>TensorRT-LLM</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;">11.85</td>
+<td style="text-align: right;">97.66</td>
+<td style="text-align: right;">333.28</td>
+<td style="text-align: right;">12.15</td>
+<td style="text-align: right;">98.90</td>
+<td style="text-align: right;">336.20</td>
+<td style="text-align: right;">2.40</td>
+<td style="text-align: right;">2.77</td>
+<td style="text-align: right;">5.43</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: center;">1</td>
+<td style="text-align: right;"><strong>5.42</strong></td>
+<td style="text-align: right;"><strong>45.96</strong></td>
+<td style="text-align: right;"><strong>164.10</strong></td>
+<td style="text-align: right;"><strong>5.27</strong></td>
+<td style="text-align: right;"><strong>46.03</strong></td>
+<td style="text-align: right;"><strong>164.42</strong></td>
+<td style="text-align: right;"><strong>1.39</strong></td>
+<td style="text-align: right;"><strong>1.44</strong></td>
+<td style="text-align: right;"><strong>1.49</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>5.3 FP8 量化页（Nano-FP8 / Super-FP8）</h3>
+<p><code>cosmos3-nano-fp8-generator.md:60-136</code>（1 GPU；<strong>PyTorch* 是另一种 FP8 recipe，不可与其他引擎直接比较</strong>）：</p>
+<table>
+<thead>
+<tr>
+<th>GPU</th>
+<th>引擎</th>
+<th style="text-align: right;">t2v 256p</th>
+<th style="text-align: right;">t2v 480p</th>
+<th style="text-align: right;">t2v 720p</th>
+<th style="text-align: right;">i2v 256p</th>
+<th style="text-align: right;">i2v 480p</th>
+<th style="text-align: right;">i2v 720p</th>
+<th style="text-align: right;">t2i 256p</th>
+<th style="text-align: right;">t2i 480p</th>
+<th style="text-align: right;">t2i 720p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RTX PRO 6000 Blackwell</td>
+<td>PyTorch*</td>
+<td style="text-align: right;">15.27</td>
+<td style="text-align: right;">154.79</td>
+<td style="text-align: right;">589.57</td>
+<td style="text-align: right;">15.21</td>
+<td style="text-align: right;">154.24</td>
+<td style="text-align: right;">587.19</td>
+<td style="text-align: right;">1.75</td>
+<td style="text-align: right;">2.76</td>
+<td style="text-align: right;">5.13</td>
+</tr>
+<tr>
+<td></td>
+<td>NIM</td>
+<td style="text-align: right;">15.50</td>
+<td style="text-align: right;">151.90</td>
+<td style="text-align: right;">597.67</td>
+<td style="text-align: right;">14.34</td>
+<td style="text-align: right;">151.67</td>
+<td style="text-align: right;">595.21</td>
+<td style="text-align: right;">1.11</td>
+<td style="text-align: right;">2.03</td>
+<td style="text-align: right;">3.49</td>
+</tr>
+<tr>
+<td>H20</td>
+<td>PyTorch*</td>
+<td style="text-align: right;">37.03</td>
+<td style="text-align: right;">381.98</td>
+<td style="text-align: right;">1505.14</td>
+<td style="text-align: right;">37.09</td>
+<td style="text-align: right;">380.01</td>
+<td style="text-align: right;">1501.45</td>
+<td style="text-align: right;">2.33</td>
+<td style="text-align: right;">5.73</td>
+<td style="text-align: right;">12.01</td>
+</tr>
+<tr>
+<td>H100 80GB HBM3</td>
+<td>PyTorch*</td>
+<td style="text-align: right;">9.15</td>
+<td style="text-align: right;">83.30</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">5.75(8卡)</td>
+<td style="text-align: right;">19.08(8卡)</td>
+<td style="text-align: right;">55.33(8卡)</td>
+<td style="text-align: right;">1.84</td>
+<td style="text-align: right;">1.92</td>
+<td style="text-align: right;">2.94</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">234.65</td>
+<td style="text-align: right;">830.32</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">21.47</td>
+<td style="text-align: right;">24.36</td>
+</tr>
+<tr>
+<td>H200 141GB HBM3</td>
+<td>PyTorch*</td>
+<td style="text-align: right;">9.00</td>
+<td style="text-align: right;">85.98</td>
+<td style="text-align: right;">322.54</td>
+<td style="text-align: right;">9.02</td>
+<td style="text-align: right;">85.61</td>
+<td style="text-align: right;">318.65</td>
+<td style="text-align: right;">1.88</td>
+<td style="text-align: right;">1.85</td>
+<td style="text-align: right;">2.98</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">231.20</td>
+<td style="text-align: right;">825.50</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">234.20</td>
+<td style="text-align: right;">819.74</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">19.90</td>
+<td style="text-align: right;">23.20</td>
+</tr>
+<tr>
+<td></td>
+<td>NIM</td>
+<td style="text-align: right;">9.75</td>
+<td style="text-align: right;">83.09</td>
+<td style="text-align: right;">298.16</td>
+<td style="text-align: right;">9.27</td>
+<td style="text-align: right;">83.86</td>
+<td style="text-align: right;">300.45</td>
+<td style="text-align: right;">1.68</td>
+<td style="text-align: right;">1.74</td>
+<td style="text-align: right;">2.53</td>
+</tr>
+<tr>
+<td>B200</td>
+<td>PyTorch*</td>
+<td style="text-align: right;">5.25</td>
+<td style="text-align: right;">45.67</td>
+<td style="text-align: right;">168.91</td>
+<td style="text-align: right;">5.18</td>
+<td style="text-align: right;">45.24</td>
+<td style="text-align: right;">167.93</td>
+<td style="text-align: right;">1.48</td>
+<td style="text-align: right;">1.47</td>
+<td style="text-align: right;">1.85</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">130.78</td>
+<td style="text-align: right;">405.87</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">129.97</td>
+<td style="text-align: right;">408.14</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">17.38</td>
+<td style="text-align: right;">19.21</td>
+</tr>
+<tr>
+<td></td>
+<td>NIM</td>
+<td style="text-align: right;">5.43</td>
+<td style="text-align: right;">47.71</td>
+<td style="text-align: right;">175.45</td>
+<td style="text-align: right;">5.18</td>
+<td style="text-align: right;">47.54</td>
+<td style="text-align: right;">180.21</td>
+<td style="text-align: right;">0.93</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">1.36</td>
+</tr>
+<tr>
+<td>B300</td>
+<td>PyTorch*</td>
+<td style="text-align: right;">4.92</td>
+<td style="text-align: right;">42.14</td>
+<td style="text-align: right;">149.55</td>
+<td style="text-align: right;">4.96</td>
+<td style="text-align: right;">41.10</td>
+<td style="text-align: right;">151.74</td>
+<td style="text-align: right;">2.37</td>
+<td style="text-align: right;">2.29</td>
+<td style="text-align: right;">2.47</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">120.69</td>
+<td style="text-align: right;">381.36</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">120.90</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">18.40</td>
+</tr>
+<tr>
+<td></td>
+<td>NIM</td>
+<td style="text-align: right;">5.42</td>
+<td style="text-align: right;">45.96</td>
+<td style="text-align: right;">164.10</td>
+<td style="text-align: right;">5.27</td>
+<td style="text-align: right;">46.03</td>
+<td style="text-align: right;">164.42</td>
+<td style="text-align: right;">1.39</td>
+<td style="text-align: right;">1.44</td>
+<td style="text-align: right;">1.49</td>
+</tr>
+<tr>
+<td><strong>GB300</strong></td>
+<td>Diffusers</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">109.65</td>
+<td style="text-align: right;">325.76</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">108.89</td>
+<td style="text-align: right;">327.89</td>
+<td style="text-align: right;"><em>(空)</em></td>
+<td style="text-align: right;">22.73</td>
+<td style="text-align: right;">20.98</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>NIM</strong></td>
+<td style="text-align: right;">5.38</td>
+<td style="text-align: right;">38.64</td>
+<td style="text-align: right;">139.55</td>
+<td style="text-align: right;">4.60</td>
+<td style="text-align: right;">39.01</td>
+<td style="text-align: right;">137.93</td>
+<td style="text-align: right;">1.84</td>
+<td style="text-align: right;">2.93</td>
+<td style="text-align: right;">2.82</td>
+</tr>
+</tbody>
+</table>
+<p>FP8 页重要注记（<code>cosmos3-nano-fp8-generator.md:138-146</code>）：</p>
+<blockquote>
+<p>"FP8 is faster than BF16 for the PyTorch path throughout. For the Diffusers path it only pays off on long video workloads: short ones are slower in FP8, <code>t2i</code> consistently so by roughly a factor of two, which suggests a fixed quantization overhead that the short runs cannot amortize."</p>
+</blockquote>
+<h3>5.4 Cosmos3-Edge (4B) Generator（秒，视频统一 121 帧）</h3>
+<p><strong>只有 TensorRT-LLM 有完整数据</strong>（PyTorch / vLLM-Omni 在此页基本留空）。</p>
+<table>
+<thead>
+<tr>
+<th>GPU / 平台</th>
+<th style="text-align: right;">t2i 256p</th>
+<th style="text-align: right;">t2i 480p</th>
+<th style="text-align: right;">t2v 256p</th>
+<th style="text-align: right;">t2v 480p</th>
+<th style="text-align: right;">i2v 256p</th>
+<th style="text-align: right;">i2v 480p</th>
+<th style="text-align: right;">v2v 256p</th>
+<th style="text-align: right;">v2v 480p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B200 SXM 192 GB</td>
+<td style="text-align: right;">0.52</td>
+<td style="text-align: right;">0.53</td>
+<td style="text-align: right;">1.05</td>
+<td style="text-align: right;">7.84</td>
+<td style="text-align: right;">1.23</td>
+<td style="text-align: right;">8.55</td>
+<td style="text-align: right;">1.15</td>
+<td style="text-align: right;">7.94</td>
+</tr>
+<tr>
+<td>B300</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.82</td>
+<td style="text-align: right;">1.00</td>
+<td style="text-align: right;">7.22</td>
+<td style="text-align: right;">1.42</td>
+<td style="text-align: right;">8.04</td>
+<td style="text-align: right;">1.24</td>
+<td style="text-align: right;">7.35</td>
+</tr>
+<tr>
+<td>H200 SXM 141 GB</td>
+<td style="text-align: right;">0.58</td>
+<td style="text-align: right;">0.58</td>
+<td style="text-align: right;">1.77</td>
+<td style="text-align: right;">14.89</td>
+<td style="text-align: right;">1.99</td>
+<td style="text-align: right;">15.89</td>
+<td style="text-align: right;">1.91</td>
+<td style="text-align: right;">15.09</td>
+</tr>
+<tr>
+<td>H100 SXM 80 GB</td>
+<td style="text-align: right;">0.58</td>
+<td style="text-align: right;">0.59</td>
+<td style="text-align: right;">1.83</td>
+<td style="text-align: right;">15.09</td>
+<td style="text-align: right;">2.08</td>
+<td style="text-align: right;">15.95</td>
+<td style="text-align: right;">1.95</td>
+<td style="text-align: right;">15.28</td>
+</tr>
+<tr>
+<td>H20 SXM 96 GB</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">1.43</td>
+<td style="text-align: right;">6.91</td>
+<td style="text-align: right;">59.19</td>
+<td style="text-align: right;">7.50</td>
+<td style="text-align: right;">62.08</td>
+<td style="text-align: right;">7.04</td>
+<td style="text-align: right;">60.03</td>
+</tr>
+<tr>
+<td>RTX PRO 6000 Blackwell Server Edition</td>
+<td style="text-align: right;">0.57</td>
+<td style="text-align: right;">0.66</td>
+<td style="text-align: right;">2.77</td>
+<td style="text-align: right;">26.13</td>
+<td style="text-align: right;">3.09</td>
+<td style="text-align: right;">27.55</td>
+<td style="text-align: right;">2.86</td>
+<td style="text-align: right;">26.21</td>
+</tr>
+</tbody>
+</table>
+<p>Edge i2v 另有 PyTorch / vLLM-Omni 数据：B200 上 PyTorch 480p = 7.45、vLLM-Omni 480p = 7.09；<strong>DGX Spark</strong> 上 PyTorch 480p = 103.36、vLLM-Omni = 89.41、TensorRT-LLM 未测。</p>
+<h3>5.5 Action 生成（Forward dynamics / Inverse dynamics / Policy）</h3>
+<p><strong>Nano BF16 — Forward Dynamics AV（秒）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>GPU</th>
+<th>引擎</th>
+<th style="text-align: right;">256p</th>
+<th style="text-align: right;">480p</th>
+<th style="text-align: right;">720p</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RTX PRO 6000 Blackwell</td>
+<td>PyTorch</td>
+<td style="text-align: right;">16.87</td>
+<td style="text-align: right;">16.86</td>
+<td style="text-align: right;">16.85</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">2.08</td>
+<td style="text-align: right;">12.94</td>
+<td style="text-align: right;">36.19</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">12.00</td>
+<td style="text-align: right;">12.00</td>
+</tr>
+<tr>
+<td>H20</td>
+<td>PyTorch</td>
+<td style="text-align: right;">31.47</td>
+<td style="text-align: right;">31.16</td>
+<td style="text-align: right;">31.45</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">4.82</td>
+<td style="text-align: right;">31.36</td>
+<td style="text-align: right;">87.55</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">5.00</td>
+<td style="text-align: right;">28.00</td>
+<td style="text-align: right;">28.20</td>
+</tr>
+<tr>
+<td>H100 80GB HBM3</td>
+<td>PyTorch</td>
+<td style="text-align: right;">7.80</td>
+<td style="text-align: right;">7.87</td>
+<td style="text-align: right;">7.79</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">1.33</td>
+<td style="text-align: right;">7.74</td>
+<td style="text-align: right;">20.60</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">8.00</td>
+<td style="text-align: right;">8.00</td>
+</tr>
+<tr>
+<td>H200 141GB HBM3</td>
+<td>PyTorch</td>
+<td style="text-align: right;">7.77</td>
+<td style="text-align: right;">7.76</td>
+<td style="text-align: right;">7.81</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">1.33</td>
+<td style="text-align: right;">7.72</td>
+<td style="text-align: right;">20.65</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">8.00</td>
+<td style="text-align: right;">8.00</td>
+</tr>
+<tr>
+<td>B200</td>
+<td>PyTorch</td>
+<td style="text-align: right;">4.75</td>
+<td style="text-align: right;">4.75</td>
+<td style="text-align: right;">4.73</td>
+</tr>
+<tr>
+<td></td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;"><strong>0.94</strong></td>
+<td style="text-align: right;">4.93</td>
+<td style="text-align: right;">12.00</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">2.00</td>
+<td style="text-align: right;">5.00</td>
+<td style="text-align: right;">5.00</td>
+</tr>
+<tr>
+<td>B300</td>
+<td>vLLM-Omni</td>
+<td style="text-align: right;">1.09</td>
+<td style="text-align: right;">4.86</td>
+<td style="text-align: right;">11.70</td>
+</tr>
+<tr>
+<td></td>
+<td>Diffusers</td>
+<td style="text-align: right;">20.87</td>
+<td style="text-align: right;">24.49</td>
+<td style="text-align: right;">26.44</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>最后一行的 B300 Diffusers <strong>明显反常</strong>（20.87/24.49/26.44，比 H100 慢 3 倍），而同一张表的 PyTorch 行在 B300 是"未测"。这是一处真实的、仓库没有解释的异常。</p>
+</blockquote>
+<p><strong>Super BF16 — Forward Dynamics AV</strong>（秒）：RTX PRO 6000（8 卡）PyTorch 59.39/59.31/59.35，Diffusers 11.99/22.93/23.68；H20（8 卡）PyTorch 41.51/41.47/41.42；H100 NVL（8 卡）PyTorch 21.00/21.00/21.04；H200 NVL PyTorch 22.66（8 卡）、vLLM-Omni 4.33/28.78/82.08（1 卡）；H200 141GB PyTorch 14.41（8 卡）、vLLM-Omni 3.99/26.04/71.61；B200 PyTorch 13.59、vLLM-Omni 2.37/14.59/38.41；B300 vLLM-Omni 2.85/14.20/36.96。</p>
+<p><strong>Nano BF16 — Forward Dynamics Robot</strong>：PyTorch 从 RTX PRO 6000 的 3.74/3.73/3.72 到 B200 的 1.28/1.30/1.31；Diffusers 固定 2.00/3.00/3.00；B300 的 Diffusers 反常为 22.65/20.75/18.10。</p>
+<p><strong>Transfer 生成（结构控制）</strong>：控制类型 <code>blur</code>、<code>depth</code>、<code>edge</code>、<code>multi_control</code>、<code>seg</code>、<code>wsm</code>（world-scenario map）。B300 抽样（1 卡）：blur — vLLM-Omni 13.85/73.35/240.39、Diffusers 12.39/66.13/207.59、TensorRT-LLM 7.67/62.95/228.34；multi_control — vLLM-Omni 26.79/243.97/1026.91、TensorRT-LLM 10.59/105.33/414.58。</p>
+<h3>5.6 Reasoner（VLM）服务性能</h3>
+<p>来源 <code>docs/reference/inference_benchmarks.md:21-817</code>，vLLM + AIPerf，并发 1 / 64 / 128 / 256。</p>
+<p><strong>Cosmos3-Nano Reasoner（TTFT ms，并发 1 → 256）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>GPU</th>
+<th style="text-align: right;">Out1/1FPS</th>
+<th style="text-align: right;">Out100/1FPS</th>
+<th style="text-align: right;">Out1/2FPS</th>
+<th style="text-align: right;">Out100/2FPS</th>
+<th style="text-align: right;">Out100/1FPS 吞吐 Tok/s @并发256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RTX PRO 6000 Blackwell</td>
+<td style="text-align: right;">187.59 → 19541.84</td>
+<td style="text-align: right;">186.46 → 14419.32</td>
+<td style="text-align: right;">316.90 → 40929.42</td>
+<td style="text-align: right;">315.77 → 44476.55</td>
+<td style="text-align: right;">622.49</td>
+</tr>
+<tr>
+<td>H20</td>
+<td style="text-align: right;">358.62 → 49549.94</td>
+<td style="text-align: right;">360.40 → 29404.60</td>
+<td style="text-align: right;">648.48 → 101597.85</td>
+<td style="text-align: right;">646.27 → 86145.80</td>
+<td style="text-align: right;">332.93</td>
+</tr>
+<tr>
+<td>H100 NVL</td>
+<td style="text-align: right;">170.69 → 21881.52</td>
+<td style="text-align: right;">172.66 → 13929.58</td>
+<td style="text-align: right;">303.65 → 44352.53</td>
+<td style="text-align: right;">296.99 → 41101.98</td>
+<td style="text-align: right;">695.12</td>
+</tr>
+<tr>
+<td>H200 NVL</td>
+<td style="text-align: right;">142.79 → 12094.34</td>
+<td style="text-align: right;">142.23 → 5271.37</td>
+<td style="text-align: right;">228.84 → 25646.99</td>
+<td style="text-align: right;">227.40 → 17729.47</td>
+<td style="text-align: right;">1270.44</td>
+</tr>
+<tr>
+<td>H100 80GB HBM3</td>
+<td style="text-align: right;">145.52 → 11133.76</td>
+<td style="text-align: right;">143.36 → 9000.63</td>
+<td style="text-align: right;">228.80 → 22836.32</td>
+<td style="text-align: right;">231.81 → 23214.88</td>
+<td style="text-align: right;">1282.48</td>
+</tr>
+<tr>
+<td>H200 141GB HBM3</td>
+<td style="text-align: right;">142.45 → 11271.28</td>
+<td style="text-align: right;">143.25 → 4713.83</td>
+<td style="text-align: right;">229.70 → 23173.10</td>
+<td style="text-align: right;">228.24 → 15991.33</td>
+<td style="text-align: right;">1374.57</td>
+</tr>
+<tr>
+<td>B200</td>
+<td style="text-align: right;">115.55 → 5550.74</td>
+<td style="text-align: right;">115.27 → 2549.79</td>
+<td style="text-align: right;">168.95 → 11422.16</td>
+<td style="text-align: right;">166.52 → 7277.89</td>
+<td style="text-align: right;">2701.08</td>
+</tr>
+<tr>
+<td>B300</td>
+<td style="text-align: right;"><strong>80.70</strong> → 5421.22</td>
+<td style="text-align: right;">83.19 → 2739.50</td>
+<td style="text-align: right;">126.25 → 11054.47</td>
+<td style="text-align: right;">129.22 → 6982.58</td>
+<td style="text-align: right;">2791.79</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cosmos3-Super Reasoner（TTFT ms）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>GPU</th>
+<th style="text-align: right;">Out1/1FPS</th>
+<th style="text-align: right;">Out100/1FPS</th>
+<th style="text-align: right;">Out1/2FPS</th>
+<th style="text-align: right;">Out100/2FPS</th>
+<th style="text-align: right;">Tok/s @并发256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RTX PRO 6000 Blackwell</td>
+<td style="text-align: right;">534.73 → 82626.36</td>
+<td style="text-align: right;">530.47 → 117849.75</td>
+<td style="text-align: right;">978.78 → <em>(空)</em></td>
+<td style="text-align: right;">981.55 → <em>(空)</em></td>
+<td style="text-align: right;">151.15</td>
+</tr>
+<tr>
+<td>H20</td>
+<td style="text-align: right;">1241.58 → <em>(空)</em></td>
+<td style="text-align: right;">1230.95 → <em>(空)</em></td>
+<td style="text-align: right;">2399.91 → <em>(空)</em></td>
+<td style="text-align: right;">2380.85 → <em>(空)</em></td>
+<td style="text-align: right;">77.81</td>
+</tr>
+<tr>
+<td>H100 NVL</td>
+<td style="text-align: right;">521.87 → 90353.80</td>
+<td style="text-align: right;">508.97 → 116733.31</td>
+<td style="text-align: right;">993.48 → <em>(空)</em></td>
+<td style="text-align: right;">999.10 → <em>(空)</em></td>
+<td style="text-align: right;">154.04</td>
+</tr>
+<tr>
+<td>H200 NVL</td>
+<td style="text-align: right;">357.69 → 54470.31</td>
+<td style="text-align: right;">348.88 → 48411.16</td>
+<td style="text-align: right;">641.05 → 111965.21</td>
+<td style="text-align: right;">640.14 → 110513.13</td>
+<td style="text-align: right;">298.96</td>
+</tr>
+<tr>
+<td>H200 141GB HBM3</td>
+<td style="text-align: right;">327.21 → 46893.25</td>
+<td style="text-align: right;">327.73 → 42108.40</td>
+<td style="text-align: right;">592.19 → 95884.55</td>
+<td style="text-align: right;">592.97 → 95995.33</td>
+<td style="text-align: right;">343.29</td>
+</tr>
+<tr>
+<td>B200</td>
+<td style="text-align: right;">212.10 → 22707.11</td>
+<td style="text-align: right;">212.40 → 16228.42</td>
+<td style="text-align: right;">350.30 → 46780.29</td>
+<td style="text-align: right;">325.21 → 42120.75</td>
+<td style="text-align: right;">696.84</td>
+</tr>
+<tr>
+<td>B300</td>
+<td style="text-align: right;">176.24 → 22238.90</td>
+<td style="text-align: right;">175.83 → 8916.09</td>
+<td style="text-align: right;">301.49 → 45276.68</td>
+<td style="text-align: right;">303.52 → 30494.72</td>
+<td style="text-align: right;">761.12</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cosmos3-Edge Reasoner（vLLM，TTFT ms）</strong>：RTX PRO 4500 Blackwell SE 165.79 → 29482.39，吞吐 130.63（并发1）→ 369.87（并发256）；RTX PRO 6000 Blackwell SE 141.99 → 10792.72，吞吐 197.75 → 893.91。</p>
+<p><strong>边缘平台（HF Transformers eager 模式，非 vLLM，仓库注明"不可与 vLLM 结果直接比较"）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>板卡</th>
+<th>规格</th>
+<th>输入</th>
+<th style="text-align: right;">Prompt Tokens</th>
+<th style="text-align: right;">Prefill 吞吐</th>
+<th style="text-align: right;">Prefill 延迟</th>
+<th style="text-align: right;">Decode 吞吐</th>
+<th style="text-align: right;">端到端延迟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Jetson AGX Thor T5000</td>
+<td>128 GB / MAXN</td>
+<td>Text</td>
+<td style="text-align: right;">1705</td>
+<td style="text-align: right;">8717 Tok/s</td>
+<td style="text-align: right;">0.20 s</td>
+<td style="text-align: right;">37.3 Tok/s</td>
+<td style="text-align: right;"><strong>3.60 s</strong></td>
+</tr>
+<tr>
+<td>Jetson AGX Thor T5000</td>
+<td>128 GB / MAXN</td>
+<td>Image</td>
+<td style="text-align: right;">911</td>
+<td style="text-align: right;">4845 Tok/s</td>
+<td style="text-align: right;">0.19 s</td>
+<td style="text-align: right;">42.6 Tok/s</td>
+<td style="text-align: right;">3.17 s</td>
+</tr>
+<tr>
+<td>Jetson AGX Thor T5000</td>
+<td>128 GB / MAXN</td>
+<td>Video</td>
+<td style="text-align: right;">1263</td>
+<td style="text-align: right;">6032 Tok/s</td>
+<td style="text-align: right;">0.21 s</td>
+<td style="text-align: right;">41.8 Tok/s</td>
+<td style="text-align: right;">3.25 s</td>
+</tr>
+<tr>
+<td>Jetson AGX Thor T4000</td>
+<td>64 GB / MAXN, 1530 MHz</td>
+<td>Text</td>
+<td style="text-align: right;">1705</td>
+<td style="text-align: right;">6519 Tok/s</td>
+<td style="text-align: right;">0.26 s</td>
+<td style="text-align: right;">34.1 Tok/s</td>
+<td style="text-align: right;">3.99 s</td>
+</tr>
+<tr>
+<td>Jetson AGX Thor T4000</td>
+<td>64 GB / MAXN</td>
+<td>1530 MHz</td>
+<td style="text-align: right;">Video</td>
+<td style="text-align: right;">1263</td>
+<td style="text-align: right;">4164 Tok/s</td>
+<td style="text-align: right;">0.30 s</td>
+<td style="text-align: right;">38.1 Tok/s</td>
+</tr>
+<tr>
+<td>Jetson Thor T3000</td>
+<td>32 GB / 1100 MHz</td>
+<td>Text</td>
+<td style="text-align: right;">1705</td>
+<td style="text-align: right;">5230 Tok/s</td>
+<td style="text-align: right;">0.33 s</td>
+<td style="text-align: right;">29.7 Tok/s</td>
+<td style="text-align: right;">4.61 s</td>
+</tr>
+<tr>
+<td>Jetson Thor T3000</td>
+<td>32 GB / 1100 MHz</td>
+<td>Video</td>
+<td style="text-align: right;">1263</td>
+<td style="text-align: right;">3388 Tok/s</td>
+<td style="text-align: right;">0.37 s</td>
+<td style="text-align: right;">33.7 Tok/s</td>
+<td style="text-align: right;">4.14 s</td>
+</tr>
+<tr>
+<td>Jetson Thor T2000</td>
+<td>16 GB / 702 MHz, THOR_NANO</td>
+<td>Text</td>
+<td style="text-align: right;">1705</td>
+<td style="text-align: right;">2355 Tok/s</td>
+<td style="text-align: right;">0.72 s</td>
+<td style="text-align: right;">15.7 Tok/s</td>
+<td style="text-align: right;"><strong>8.80 s</strong></td>
+</tr>
+<tr>
+<td>Jetson Thor T2000</td>
+<td>16 GB / 702 MHz, THOR_NANO</td>
+<td>Video</td>
+<td style="text-align: right;">1263</td>
+<td style="text-align: right;">1543 Tok/s</td>
+<td style="text-align: right;">0.82 s</td>
+<td style="text-align: right;">18.0 Tok/s</td>
+<td style="text-align: right;">7.87 s</td>
+</tr>
+<tr>
+<td>Jetson AGX Orin</td>
+<td>64 GB</td>
+<td>Text</td>
+<td style="text-align: right;">1705</td>
+<td style="text-align: right;">3260 Tok/s</td>
+<td style="text-align: right;">0.52 s</td>
+<td style="text-align: right;">12.3 Tok/s</td>
+<td style="text-align: right;"><strong>10.83 s</strong></td>
+</tr>
+<tr>
+<td>Jetson AGX Orin</td>
+<td>64 GB</td>
+<td>Video</td>
+<td style="text-align: right;">1263</td>
+<td style="text-align: right;">2103 Tok/s</td>
+<td style="text-align: right;">0.60 s</td>
+<td style="text-align: right;">12.2 Tok/s</td>
+<td style="text-align: right;">10.97 s</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="图 10｜三档模型的速度阶梯" src="2026-11-08_nvidia-cosmos_fig5-ladder.svg" /></p>
+<p><strong>图 10｜三档模型 + 端侧的秒数阶梯</strong> —— 看这里：横条长度是"跑完一次要多少秒"（对数刻度）。Edge(4B) 在 B200 上 <strong>1.05 秒</strong>出一段 256p 视频，Nano(16B) 在同一张卡上要 <strong>49.86 秒</strong>，Super(64B) 要 <strong>175.45 秒</strong>；最右边的 Jetson Thor T2000（16 GB 内存的小盒子）跑 Edge 推理要 <strong>8.80 秒</strong>。</p>
+<p><img alt="图 11｜这个仓库有数字的与没有数字的" src="2026-11-08_nvidia-cosmos_fig6-eval-gap.svg" /></p>
+<p><strong>图 11｜仓库的"信息缺口"</strong> —— 看这里：左边实心的是<strong>仓库真的给了数字</strong>的部分（模型规格、I/O 契约、延迟、吞吐、端侧性能）；右边灰色虚线是<strong>只有名字、没有数值</strong>的部分（PAIBench-G/C、Physics-IQ、UniGenBench、RBench、TAR &amp; VANTAGE，以及 GRPO/RLHF 这类算法名）。下面那条更狠：<strong>latent 形状、tokenizer、训练数据、rollout 循环、缓存策略，仓库一个字都没有</strong>。</p>
+<hr />
+<h2>六、怎么用：门槛、下载、零安装入口</h2>
+<p><strong>傻瓜层：</strong> 想跑起来，你得先去 Hugging Face 申请一个<strong>带门禁的仓库权限</strong>（光登录不管用），再按 README 装环境；也可以直接用 NVIDIA 的 NIM 接口，零安装。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>前置条件</strong>（<code>README.md:98</code> 原文）：</p>
+<blockquote>
+<p>"Before running the code, request access to <strong><code>nvidia/Cosmos-1.0-Guardrail</code></strong> and accept its access conditions. Once access is granted, log in below with a Hugging Face read token from the same account. <strong>Logging in alone does not grant access.</strong>"</p>
+</blockquote>
+<p><strong>唯一一份可复制的上手流程</strong>（<code>README.md:96-121</code>）：</p>
+<pre><code class="language-bash">uv venv --python 3.13 --seed --managed-python &amp;&amp; source .venv/bin/activate
+uv pip install --torch-backend=auto \
+&quot;diffusers @ git+https://github.com/huggingface/diffusers.git&quot; \
+accelerate av cosmos_guardrail huggingface_hub imageio imageio-ffmpeg \
+torch torchvision transformers
+uvx hf@latest auth login   # 认证 gated 的 Guardrail 仓库
+</code></pre>
+<p><strong>零安装试用</strong>：README 给出 NIM API 端点入口，可直接调 NVIDIA 托管的服务（不需要自己装环境）。</p>
+<p><strong>硬件门槛</strong>：仓库未给出统一的 VRAM 表（<strong>仓库未说明</strong>），只散落着实测配置——H100 80GB / H200 141GB / B200 192GB / B300 / GB300 / RTX PRO 6000 Blackwell，以及 Jetson Thor T5000(128GB)、T4000(64GB)、T3000(32GB)、T2000(16GB)、AGX Orin(64GB)。</p>
+<p><strong>Cookbook</strong>（<code>COOKBOOK.md</code>）是纯链接索引：Inference 6 条、Simulation 5 条、Post-training 6 条、Distillation 1 条、Evaluation 2 类；带 GPU 预算标签 S/M/L/XL 供选型。</p>
+<hr />
+<h2>为什么 / 坑 — Why &amp; pitfalls</h2>
+<ol>
+<li><strong>它是落地页，不是代码库。</strong> <code>AGENTS.md:7</code> 明说代码去 Cosmos Framework。想跑训练脚本的人会在这个仓库里一无所获，而且<strong>连一个 <code>requirements.txt</code> 都没有</strong>。</li>
+<li><strong>同一张表里混了三种延迟口径。</strong> BF16 页上的 NIM 行<strong>默认精度其实是 FP8</strong>（<code>inference_benchmarks.md:11</code>），而同表里 vLLM-Omni 报的是<strong>端到端延迟</strong>、PyTorch 报的是<strong>平均生成延迟</strong>。<strong>横着比大小会出错。</strong></li>
+<li><strong>FP8 页的 PyTorch* 数字被仓库自己标为"乐观、不可比"</strong>：它用了不同 recipe（首尾各 3 步 W8A16、中间 W8A8）。而 Diffusers 在 t2i 上 FP8 反而<strong>慢约 2 倍</strong>——量化有固定开销，短任务摊不掉。</li>
+<li><strong>Super 页的 GPU 数在同一列里跳变</strong>：H200 NVL 区块的 PyTorch 报 8 卡、其他报 1 卡。直接比列会得出错误结论。</li>
+<li><strong>一处数字被主动留空</strong>：Super 的 vLLM-Omni i2v 720p（H100 80GB）因"时间远低于 480p、物理上不合理"被置空待重跑——<strong>这是仓库自己承认的一个反常</strong>。</li>
+<li><strong>8 卡 action 测量整体缺失</strong>："8-GPU Ulysses runs failed a sequence-length divisibility check"，只能报 1/2/4 卡。</li>
+<li><strong>"35 步去噪"、"54/54 胜场"、"GB300 比 B300 快 15%" 这些只存在于 HEAD 的提交信息里</strong>，任何 tracked 文件都没有——引用时务必说明来源。</li>
+<li><strong>仓库内部两处小瑕疵</strong>：<code>assets/ASSET_SPECS.md:31</code> 写的图路径 <code>assets/cosmos3-architecture.png</code> <strong>不存在</strong>（真实路径是 <code>docs/assets/cosmos3-model-architecture.png</code>）；<code>assets/demos/mp4/reasoner_traffic_report.mp4</code> 是<strong>未被 ASSET_SPECS 记录的孤儿素材</strong>，且与 <code>reasoner_driving_hazard.gif</code> 文件名不对应。</li>
+<li><strong>仓库 40.2 MB 的 tracked 体积里 21.9 MB 是 6 个 GIF</strong>（54%），只为 README 六宫格。</li>
+<li><strong><code>.gitignore</code> 是一个 Python 项目模板</strong>（190 行，<code>__pycache__</code>、<code>*.ckpt</code>、<code>/dataset/</code>），<strong>与本仓库零代码的事实不匹配</strong>——纯样板残留。</li>
+<li><strong>依赖不锁版本</strong>：diffusers 装的是 <strong>git main</strong>，工具用 <code>uvx hf@latest</code>。文档站与仓库的版本会漂移。</li>
+<li><strong>gated 仓库的坑</strong>：只 <code>hf auth login</code> <strong>不会</strong>给你访问权，必须先申请 <code>nvidia/Cosmos-1.0-Guardrail</code> 并接受其条件。</li>
+</ol>
+<hr />
+<h2>未验证 · 风险 · 待定 — Unverified · risks · open</h2>
+<ul>
+<li><strong>质量指标完全空缺</strong>：仓库自述质量评测在 <code>evaluation/</code> 目录，但<strong>该目录在本仓库不存在</strong>。PAIBench-G/C、Physics-IQ、UniGenBench、RBench、TAR &amp; VANTAGE <strong>全部只有名字</strong>。</li>
+<li><strong>架构细节不足</strong>：latent 形状、tokenizer 与压缩率、视频 VAE 结构、MoT 两个塔的层数与宽度、3D mRoPE 的频率分配——<strong>仓库未说明</strong>（<code>git grep -i tokenizer</code> 零命中）。</li>
+<li><strong>采样器配置</strong>：是否 flow matching、CFG 取值、每步的调度——<strong>仓库未说明</strong>；"35 steps" 仅见于提交信息。</li>
+<li><strong>训练全线未说明</strong>：预训练/后训练数据、RL 算法（GRPO/RLHF 均零命中）、训练硬件与时长——<strong>仓库未说明</strong>。</li>
+<li><strong>rollout 循环未说明</strong>：缓存策略、帧间状态传递、闭环如何收束——<strong>仓库未说明</strong>。</li>
+<li><strong>历史不可查</strong>：本地为压平 clone，仅 1 个提交、无 tag，<strong>无法从本仓库观察演进过程</strong>。</li>
+<li><strong>外部依赖未验证</strong>：Cosmos Framework、Cosmos Curator、Cosmos Evaluator、NIM 端点、Cookbook 里的站外短链——本报告<strong>未访问网络</strong>，其内容与可用性均未验证。</li>
+<li><strong>风险</strong>：所有数字都是 NVIDIA 自测口径；不同引擎的延迟定义不一致（见坑 2），跨页横向比较需谨慎。</li>
+</ul>
+<hr />
+<h2>来源 / Sources</h2>
+<p><strong>仓库</strong></p>
+<ul>
+<li>URL：<a href="https://github.com/NVIDIA/cosmos">https://github.com/NVIDIA/cosmos</a></li>
+<li>分支：<code>main</code>；HEAD <code>71317702510f7c456ba3d702b84fb103546caea2</code>（2026-11-06 17:56:04 +0100，Egor Krivov <code>&lt;ekrivov@nvidia.com&gt;</code>，"Update Cosmos3 Generator NIM benchmarks to NIM 2.1.0 (#393)"）</li>
+<li>提交总数：1（压平 clone）；tag：无；License：OpenMDW-1.1</li>
+<li>本地路径：<code>cosmos/</code>（临时目录）</li>
+</ul>
+<p><strong>主要文件</strong></p>
+<ul>
+<li><code>README.md</code>、<code>AGENTS.md</code>、<code>COOKBOOK.md</code>、<code>SECURITY.md</code>、<code>LICENSE</code></li>
+<li><code>docs/reference/models.md</code>（规格与 I/O 矩阵）</li>
+<li><code>docs/reference/inference_benchmarks.md</code>（Reasoner 基准）</li>
+<li><code>docs/reference/inference_benchmarks/cosmos3-{edge,nano,super}-generator.md</code>、<code>cosmos3-{nano,super}-fp8-generator.md</code></li>
+<li><code>docs/assets/cosmos3-model-architecture.png</code>（原图直接引用）</li>
+</ul>
+<p><strong>执行过的命令（可复现）</strong></p>
+<pre><code class="language-bash">git -C cosmos/ log -1 --format='%H %ci %s'
+git -C cosmos/ rev-list --count HEAD
+git -C cosmos/ ls-files | wc -l
+git -C cosmos/ ls-files | awk '{print $4}' | xargs stat -f%z   # 逐文件字节数
+find cosmos -name '*.md' -exec cat {} + | wc -l              # 4,398 行 Markdown
+git -C cosmos/ ls-files | grep -E '\.(py|sh|js|ts|ipynb|yaml|yml|toml|json|cpp|cu)$'   # 无输出
+git -C cosmos/ grep -i -e tokenizer -e GRPO -e RLHF -e NOMINA  # 均零命中
+</code></pre>
+<p><strong>时间</strong>：全部调研于 2026-11-08（Asia/Shanghai）离线完成；未访问网络。</p>
+    
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+
+    document.addEventListener('click', function(e) {
+      var mDiv = e.target.closest('.mermaid');
+      if (mDiv && !e.target.closest('.mermaid-overlay')) {
+        var svg = mDiv.querySelector('svg');
+        if (!svg) return;
+
+        var overlay = document.createElement('div');
+        overlay.className = 'mermaid-overlay';
+
+        var hint = document.createElement('div');
+        hint.className = 'zoom-hint';
+        hint.textContent = 'Scroll to zoom · Drag to pan · ESC to close';
+        overlay.appendChild(hint);
+
+        var controls = document.createElement('div');
+        controls.className = 'zoom-controls';
+        var btnPlus = document.createElement('button'); btnPlus.textContent = '+';
+        var btnMinus = document.createElement('button'); btnMinus.textContent = '−';
+        var btnFit = document.createElement('button'); btnFit.textContent = '↺';
+        btnFit.title = 'Fit to screen';
+        controls.appendChild(btnPlus);
+        controls.appendChild(btnMinus);
+        controls.appendChild(btnFit);
+        overlay.appendChild(controls);
+
+        var container = document.createElement('div');
+        container.className = 'zoom-container';
+        var clone = svg.cloneNode(true);
+        clone.removeAttribute('width');
+        clone.removeAttribute('height');
+        var bb = svg.getBBox ? svg.getBBox() : null;
+        var svgW = bb ? bb.width + bb.x + 40 : svg.scrollWidth || 800;
+        var svgH = bb ? bb.height + bb.y + 40 : svg.scrollHeight || 600;
+        clone.setAttribute('width', svgW);
+        clone.setAttribute('height', svgH);
+        container.appendChild(clone);
+        overlay.appendChild(container);
+        document.body.appendChild(overlay);
+
+        var scale = 1, tx = 0, ty = 0;
+        var dragging = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
+
+        function fitToScreen() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var sx = (vw * 0.92) / svgW, sy = (vh * 0.9) / svgH;
+          scale = Math.min(sx, sy, 3);
+          tx = (vw - svgW * scale) / 2;
+          ty = (vh - svgH * scale) / 2;
+          applyTransform();
+        }
+
+        function applyTransform() {
+          clone.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+        }
+
+        function zoomAt(cx, cy, factor) {
+          var newScale = Math.min(Math.max(scale * factor, 0.15), 8);
+          tx = cx - (cx - tx) * (newScale / scale);
+          ty = cy - (cy - ty) * (newScale / scale);
+          scale = newScale;
+          applyTransform();
+        }
+
+        fitToScreen();
+
+        container.addEventListener('wheel', function(ev) {
+          ev.preventDefault();
+          var factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
+          zoomAt(ev.clientX, ev.clientY, factor);
+        }, { passive: false });
+
+        container.addEventListener('mousedown', function(ev) {
+          if (ev.button !== 0) return;
+          dragging = true; startX = ev.clientX; startY = ev.clientY;
+          startTx = tx; startTy = ty;
+          container.classList.add('dragging');
+          ev.preventDefault();
+        });
+        window.addEventListener('mousemove', function moveHandler(ev) {
+          if (!dragging) return;
+          tx = startTx + (ev.clientX - startX);
+          ty = startTy + (ev.clientY - startY);
+          applyTransform();
+        });
+        window.addEventListener('mouseup', function upHandler() {
+          if (dragging) { dragging = false; container.classList.remove('dragging'); }
+        });
+
+        container.addEventListener('dblclick', function(ev) {
+          ev.stopPropagation();
+          zoomAt(ev.clientX, ev.clientY, 1.8);
+        });
+
+        btnPlus.addEventListener('click', function(ev) { ev.stopPropagation(); zoomAt(window.innerWidth/2, window.innerHeight/2, 1.4); });
+        btnMinus.addEventListener('click', function(ev) { ev.stopPropagation(); zoomAt(window.innerWidth/2, window.innerHeight/2, 1/1.4); });
+        btnFit.addEventListener('click', function(ev) { ev.stopPropagation(); fitToScreen(); });
+
+        overlay.addEventListener('click', function(ev) {
+          if (ev.target === overlay) overlay.remove();
+        });
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var ov = document.querySelector('.mermaid-overlay');
+        if (ov) ov.remove();
+      }
+    });
+  </script>
+</body>
+</html>

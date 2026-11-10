@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="780" viewBox="0 0 1400 780" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <defs>
+    <marker id="ar-orange" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#ea580c"/>
+    </marker>
+    <marker id="ar-blue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="ar-blue-lg" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="ar-purple" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#7c3aed"/>
+    </marker>
+    <marker id="ar-slate" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <!-- 标题 -->
+  <text x="700" y="36" text-anchor="middle" font-size="24" font-weight="bold" fill="#1e293b">Cosmos 3 · Mixture-of-Transformers（MoT）架构</text>
+  <text x="700" y="58" text-anchor="middle" font-size="15" fill="#64748b">自回归 Transformer 负责「读」 · 扩散 Transformer 负责「写」 · 两塔共享权重与统一 3D mRoPE</text>
+
+  <!-- ================= 上层：读（推理） ================= -->
+  <rect x="30" y="78" width="1340" height="230" rx="12" fill="#dbeafe"/>
+  <text x="56" y="100" font-size="16" font-weight="bold" fill="#1e3a8a">读 · 推理路径</text>
+
+  <!-- 条件输入三盒 -->
+  <g>
+    <rect x="70" y="118" width="120" height="48" rx="8" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+    <text x="130" y="148" text-anchor="middle" font-size="16" fill="#7c2d12">文本</text>
+
+    <rect x="70" y="174" width="120" height="48" rx="8" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+    <text x="130" y="204" text-anchor="middle" font-size="16" fill="#7c2d12">图像</text>
+
+    <rect x="70" y="230" width="120" height="48" rx="8" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+    <text x="130" y="260" text-anchor="middle" font-size="16" fill="#7c2d12">视频</text>
+  </g>
+
+  <!-- 条件箭头（各自独立路径，分别指向真正进入的盒子） -->
+  <g stroke="#ea580c" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M190,142 L328,168" marker-end="url(#ar-orange)"/>
+    <path d="M190,198 L328,195" marker-end="url(#ar-orange)"/>
+    <path d="M190,254 L328,222" marker-end="url(#ar-orange)"/>
+  </g>
+
+  <!-- 自回归 Transformer -->
+  <rect x="330" y="140" width="340" height="110" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="3"/>
+  <text x="500" y="188" text-anchor="middle" font-size="20" font-weight="bold" fill="#1d4ed8">自回归 Transformer</text>
+  <text x="500" y="216" text-anchor="middle" font-size="14" fill="#64748b">理解画面 · 规划动作</text>
+
+  <!-- 到输出 -->
+  <path d="M670,195 L788,205" stroke="#2563eb" stroke-width="2.5" fill="none" stroke-linecap="round" marker-end="url(#ar-blue)"/>
+
+  <rect x="790" y="155" width="280" height="100" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="930" y="197" text-anchor="middle" font-size="20" font-weight="bold" fill="#1d4ed8">文字输出</text>
+  <text x="930" y="225" text-anchor="middle" font-size="14" fill="#475569">文字理解 / 任务规划 / 具身推理</text>
+
+  <!-- 上层注释框 -->
+  <rect x="1100" y="170" width="250" height="56" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="1225" y="203" text-anchor="middle" font-size="14" fill="#475569">推理：读出文字与规划</text>
+
+  <!-- ================= 两层之间：共享权重 ================= -->
+  <text x="700" y="326" text-anchor="middle" font-size="14" fill="#64748b">3D mRoPE（时间 / 高 / 宽 三轴位置编码）</text>
+
+  <path d="M60,351 L1340,351" stroke="#334155" stroke-width="2.5" fill="none" stroke-dasharray="9 6" stroke-linecap="butt" marker-start="url(#ar-slate)" marker-end="url(#ar-slate)"/>
+  <rect x="660" y="338" width="80" height="26" rx="5" fill="#ffffff"/>
+  <text x="700" y="356" text-anchor="middle" font-size="16" font-weight="bold" fill="#334155">共享权重</text>
+
+  <!-- ================= 下层：写（生成） ================= -->
+  <rect x="30" y="388" width="1340" height="300" rx="12" fill="#ede9fe"/>
+  <text x="56" y="410" font-size="16" font-weight="bold" fill="#5b21b6">写 · 生成路径</text>
+
+  <!-- 两塔与「共享权重」轴的系线（虚线，无箭头：表示共享而非数据流） -->
+  <path d="M500,250 L500,351" stroke="#64748b" stroke-width="1.5" fill="none" stroke-dasharray="5 4"/>
+  <path d="M565,351 L565,440" stroke="#64748b" stroke-width="1.5" fill="none" stroke-dasharray="5 4"/>
+
+  <!-- 下层输入 -->
+  <rect x="55" y="436" width="255" height="66" rx="8" fill="#ffedd5" stroke="#ea580c" stroke-width="2"/>
+  <text x="182" y="464" text-anchor="middle" font-size="16" fill="#7c2d12">条件：文本 / 图像 / 动作</text>
+  <text x="182" y="488" text-anchor="middle" font-size="16" fill="#7c2d12">时间步（timestep）</text>
+
+  <rect x="55" y="520" width="255" height="52" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="182" y="552" text-anchor="middle" font-size="16" fill="#5b21b6">初始噪声（潜变量）</text>
+
+  <!-- 汇入扩散 Transformer -->
+  <path d="M310,469 L398,470" stroke="#ea580c" stroke-width="2.5" fill="none" stroke-linecap="round" marker-end="url(#ar-orange)"/>
+  <path d="M310,546 L398,522" stroke="#7c3aed" stroke-width="2.5" fill="none" stroke-linecap="round" marker-end="url(#ar-purple)"/>
+
+  <!-- 扩散 Transformer -->
+  <rect x="400" y="440" width="330" height="110" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="3"/>
+  <text x="565" y="487" text-anchor="middle" font-size="20" font-weight="bold" fill="#6d28d9">扩散 Transformer</text>
+  <text x="565" y="515" text-anchor="middle" font-size="14" fill="#64748b">逐去噪步生成</text>
+
+  <!-- 多步去噪格子条 -->
+  <text x="409" y="570" font-size="14" fill="#64748b">多步去噪</text>
+  <g stroke="#ffffff" stroke-width="1">
+    <rect x="409" y="576" width="32" height="32" fill="#ddd6fe"/>
+    <rect x="449" y="576" width="32" height="32" fill="#c4b5fd"/>
+    <rect x="489" y="576" width="32" height="32" fill="#a78bfa"/>
+    <rect x="529" y="576" width="32" height="32" fill="#8b5cf6"/>
+    <rect x="569" y="576" width="32" height="32" fill="#7c3aed"/>
+    <rect x="609" y="576" width="32" height="32" fill="#6d28d9"/>
+    <rect x="649" y="576" width="32" height="32" fill="#5b21b6"/>
+    <rect x="689" y="576" width="32" height="32" fill="#4c1d95"/>
+  </g>
+
+  <!-- 步数未说明 -->
+  <rect x="740" y="576" width="290" height="32" rx="6" fill="#f1f5f9" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="885" y="597" text-anchor="middle" font-size="14" font-style="italic" fill="#6b7280">仓库未说明步数（提交信息提到 35 步）</text>
+
+  <!-- 潜变量形状未说明 -->
+  <rect x="55" y="598" width="330" height="62" rx="6" fill="#f1f5f9" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="220" y="624" text-anchor="middle" font-size="14" font-style="italic" fill="#6b7280">潜变量形状、两塔层数与宽度：</text>
+  <text x="220" y="648" text-anchor="middle" font-size="14" font-style="italic" fill="#6b7280">仓库未说明</text>
+
+  <!-- 生成输出 -->
+  <path d="M730,495 L1045,495" stroke="#2563eb" stroke-width="5" fill="none" stroke-linecap="butt" marker-end="url(#ar-blue-lg)"/>
+  <rect x="770" y="482" width="232" height="26" rx="5" fill="#ede9fe"/>
+  <text x="886" y="501" text-anchor="middle" font-size="16" font-weight="bold" fill="#2563eb">视频 / 图像 / 音频 / 动作</text>
+
+  <!-- 下层注释框 -->
+  <rect x="1075" y="467" width="285" height="56" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="1217" y="500" text-anchor="middle" font-size="14" fill="#475569">生成：视频 · 图像 · 音频 · 动作</text>
+
+  <!-- ================= 图例与来源 ================= -->
+  <g font-size="14" fill="#475569">
+    <rect x="40" y="702" width="12" height="12" rx="3" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+    <text x="58" y="713">条件输入</text>
+    <rect x="140" y="702" width="12" height="12" rx="3" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="158" y="713">潜变量 / 扩散</text>
+    <rect x="280" y="702" width="12" height="12" rx="3" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="298" y="713">生成输出</text>
+    <rect x="380" y="702" width="12" height="12" rx="3" fill="#f1f5f9" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="398" y="713">仓库未说明</text>
+  </g>
+  <text x="1360" y="748" text-anchor="end" font-size="14" fill="#94a3b8">来源：docs/reference/models.md:51</text>
+</svg>

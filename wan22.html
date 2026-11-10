@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wan2.2 完全拆解</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #fafafa;
+      padding: 2rem 1rem;
+    }
+
+    main { max-width: 1200px; margin: 0 auto; }
+
+    .mermaid { cursor: pointer; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1em; margin: 1em 0; background: #fff; position: relative; transition: box-shadow 0.2s; }
+    .mermaid:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
+    .mermaid::after { content: 'click to zoom'; position: absolute; bottom: 4px; right: 10px; font-size: 0.7em; color: #aaa; pointer-events: none; }
+
+    .mermaid-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; overflow: hidden; }
+    .mermaid-overlay .zoom-container { width: 100%; height: 100%; overflow: hidden; cursor: grab; }
+    .mermaid-overlay .zoom-container.dragging { cursor: grabbing; }
+    .mermaid-overlay .zoom-container svg { background: #fff; border-radius: 8px; padding: 1.5em; transform-origin: 0 0; position: absolute; }
+    .mermaid-overlay .zoom-hint { position: absolute; top: 16px; right: 24px; color: #ccc; font-size: 0.85em; z-index: 10000; pointer-events: none; }
+    .mermaid-overlay .zoom-controls { position: absolute; bottom: 24px; right: 24px; z-index: 10000; display: flex; gap: 8px; }
+    .mermaid-overlay .zoom-controls button { width: 40px; height: 40px; border: none; border-radius: 8px; background: rgba(255,255,255,0.9); color: #333; font-size: 1.3em; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .mermaid-overlay .zoom-controls button:hover { background: #fff; }
+
+    h1, h2, h3, h4, h5, h6 { margin-top: 1.4em; margin-bottom: 0.6em; line-height: 1.3; }
+    h1 { font-size: 1.8rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3em; }
+    h2 { font-size: 1.4rem; }
+    h3 { font-size: 1.2rem; }
+
+    p { margin-bottom: 1em; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul, ol { margin: 0 0 1em 1.5em; }
+    li { margin-bottom: 0.25em; }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.9em; background: #eee; padding: 0.15em 0.35em; border-radius: 3px;
+    }
+
+    pre { background: #272822; color: #f8f8f2; padding: 1em; border-radius: 6px; overflow-x: auto; margin-bottom: 1em; }
+    pre code { background: none; padding: 0; color: inherit; font-size: 0.85em; }
+
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+    th, td { border: 1px solid #ccc; padding: 0.5em 0.75em; text-align: left; }
+    th { background: #eee; font-weight: 600; }
+
+    blockquote { border-left: 4px solid #ccc; margin: 0 0 1em 0; padding: 0.5em 1em; color: #555; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 2em 0; }
+
+    .file-list { list-style: none; margin-left: 0; }
+    .file-list li { margin-bottom: 0.5em; }
+    .file-list a { font-size: 1.1em; }
+
+    .nav { margin-bottom: 1.5em; font-size: 0.9em; }
+    .nav a { color: #666; }
+
+  </style>
+</head>
+<body>
+  <main>
+
+    
+      <h1>Wan2.2 完全拆解</h1>
+      <h1>Wan2.2 完全拆解：那个"MoE"其实是两份完整权重在时间轴上换班</h1>
+<blockquote>
+<p>调研对象：<code>https://github.com/Wan-Video/Wan2.2</code>（本地 checkout：<code>Wan2.2/</code>）
+调研方式：<strong>离线</strong>，全部结论来自仓库文件内容与 <code>git</code> 命令输出；参数量是把源码 import 到 <code>torch.device('meta')</code> <strong>实测求和</strong>得到的，不是抄 README。撰写日期：2026-11-08（Asia/Shanghai）。
+引用约定：<code>文件路径:行号</code>。仓库没写的，标注 <strong>「仓库未说明」</strong>。</p>
+</blockquote>
+<p><img alt="图 1｜Wan2.2 是什么：一句话变视频，五个模型各有分工" src="2026-11-08_wan22_fig1-hero.svg" /></p>
+<p><strong>图 1｜Wan2.2 是什么</strong> —— 看这里：左边是五个模型（两个 14B 的大块、三个小的），右边是它们各自能干的事。中间那条<strong>橙色的箭头</strong>是重点：<strong>写一句话，出一段视频</strong>；而"图生视频""语音生视频""角色动画"只是把左边的输入换掉。</p>
+<hr />
+<h2>结论 / Conclusion</h2>
+<p><strong>Wan2.2 是阿里通义万相（Wan）团队的 2.2 代代码库：87 个文件、57 个 Python 文件、19,138 行代码，Apache-2.0 许可，是这一代最完整、最能读懂的开源视频生成实现之一。</strong></p>
+<p>但它最反直觉的一点是：<strong>A14B 的"MoE"根本不是稀疏混合专家</strong>。它没有 router、没有 token 级路由——它是<strong>两份各自完整的 40 层模型权重</strong>（高噪专家 / 低噪专家，各 14.29B 参数），在去噪时间轴的 <code>t = 875</code> 处<strong>整模型换班</strong>，并且伴随一次 CPU↔GPU 的权重搬运。</p>
+<p>第二个反直觉：<strong>A14B 的采样步数不是"50 步高噪 + 10 步低噪"</strong>。按代码复算调度器时间表，T2V-A14B 的 40 步实际是 <strong>26 步高噪 + 14 步低噪</strong>（shift=12.0），I2V-A14B 是 <strong>15 + 25</strong>（shift=5.0）——<strong>shift 参数越大，切得越早</strong>。</p>
+<p>第三个：<strong>图生视频不用 CLIP</strong>。A14B-I2V 是把「噪声 16 通道 + mask 4 通道 + 首帧 latent 16 通道」直接<strong>拼成 36 通道</strong>喂进 DiT；CLIP 只在 Animate（角色动画）里出现。</p>
+<h3>技术版 / Technical</h3>
+<ul>
+<li><strong>身份</strong>：<code>main</code> 分支，HEAD <code>1ea34ff48f87168174e12956e200b1d908b1c5ff</code>（2026-09-21 14:16:22 +0800），<strong>shallow clone 仅 1 个 commit</strong>，历史不可查。License = <strong>Apache 2.0</strong>（<code>LICENSE.txt</code>）。87 个 tracked 文件：<strong>57 个 <code>.py</code>（19,138 行）</strong> + 18 个媒体 + 文档。</li>
+<li><strong>实测参数量</strong>（<code>torch.device('meta')</code> 实例化后逐参数 <code>numel()</code> 求和）：T2V-A14B 单专家 <strong>14,288,491,584</strong>；I2V-A14B <strong>14,288,901,184</strong>（in_dim=36）；TI2V-5B <strong>4,999,787,712</strong>（正好 5.00B）；S2V-14B <strong>16,925,024,089</strong>；Animate-14B <strong>17,274,816,884</strong>。README 说双专家共 27B，<strong>推导为 28.58B</strong>。</li>
+<li><strong>核心形状</strong>（T2V-A14B @1280×720×81）：像素 <code>81×720×1280×3</code> → VAE(4×8×8) → latent <code>(16,21,90,160)</code> → patch(1,2,2) → <strong>S = 75,600 token</strong>，D=5120 / 40 头 / head_dim=128 / 40 层。</li>
+<li><strong>单层参数分解</strong>（A14B）：self-attn 104,888,320 + cross-attn 104,888,320 + FFN 141,576,704 + modulation 30,720 + norm 10,240 = <strong>351,394,304</strong>，×40 = 14.06B（占 98.4%）。</li>
+<li><strong>3D RoPE 频率分配</strong>：<code>freqs.split([c-2*(c//3), c//3, c//3])</code> = <strong>[22, 21, 21] / 64</strong> → 时间 F 34.4%、高 H 32.8%、宽 W 32.8%。</li>
+<li><strong>注意力后端</strong>：只有 <strong>FlashAttention-3 → FlashAttention-2</strong>，主干<strong>不走 SDPA</strong>；<code>assert q.device.type == 'cuda' and q.size(-1) &lt;= 256</code>（<code>wan/modules/attention.py:54</code>）→ <strong>纯 CPU 无法推理，head_dim 必须 ≤ 256</strong>。<strong>仓库无 SageAttention、无 fp8 路径。</strong></li>
+</ul>
+<hr />
+<h2>一、仓库地图</h2>
+<p><strong>傻瓜层：</strong> 这是一个"能跑起来"的开源实现：五个模型、六个 Python 入口脚本、完整的 VAE + DiT + 条件编码 + 分布式训练框架（推理用），<strong>但没有一行训练代码</strong>。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>顶层结构</strong>（87 个 tracked 文件，全部读过）：</p>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>README.md</code></td>
+<td>仓库主页：模型时间线、能力矩阵（文/图/音频/角色）、多卡安装与运行、致谢</td>
+</tr>
+<tr>
+<td><code>INSTALL.md</code></td>
+<td>安装细节、flash-attn 编译问题</td>
+</tr>
+<tr>
+<td><code>LICENSE.txt</code></td>
+<td>Apache 2.0</td>
+</tr>
+<tr>
+<td><code>Makefile</code></td>
+<td><strong>只有 <code>format</code> 一条目标</strong>（black/isort），没有任何训练或构建目标</td>
+</tr>
+<tr>
+<td><code>generate.py</code></td>
+<td><strong>统一 CLI 入口</strong>：解析参数 → 校验 → 按 task 分发到 pipeline</td>
+</tr>
+<tr>
+<td><code>pyproject.toml</code> / <code>requirements*.txt</code></td>
+<td>依赖；<code>requirements.txt:6</code> 把 <code>transformers</code> 钉在 <code>&lt;=4.51.3</code></td>
+</tr>
+<tr>
+<td><code>wan/</code></td>
+<td>主包（57 个 py 文件中的绝大部分）</td>
+</tr>
+<tr>
+<td><code>wan/configs/*.py</code></td>
+<td>5 份任务配置 + 1 份共享配置（<strong>全部是 Python <code>EasyDict</code>，仓库里没有一个 YAML</strong>）</td>
+</tr>
+<tr>
+<td><code>wan/modules/model.py</code></td>
+<td><strong>DiT 主干</strong>（546 行）：<code>WanModel</code> / <code>WanAttentionBlock</code> / 自注意力 / 交叉注意力 / 3D RoPE</td>
+</tr>
+<tr>
+<td><code>wan/modules/vae2_1.py</code></td>
+<td>Wan2.1-VAE（663 行）：4×8×8，z=16</td>
+</tr>
+<tr>
+<td><code>wan/modules/vae2_2.py</code></td>
+<td>Wan2.2-VAE（1051 行）：4×16×16，z=48</td>
+</tr>
+<tr>
+<td><code>wan/modules/attention.py</code></td>
+<td>FlashAttention 封装与 SDPA 兜底（179 行）</td>
+</tr>
+<tr>
+<td><code>wan/modules/t5.py</code></td>
+<td>umT5-XXL 文本编码器（513 行）</td>
+</tr>
+<tr>
+<td><code>wan/modules/tokenizers.py</code></td>
+<td>HuggingFaceTokenizer 包装（82 行）</td>
+</tr>
+<tr>
+<td><code>wan/modules/s2v/</code></td>
+<td>语音到视频：辅助块、音频编码器、face adapter</td>
+</tr>
+<tr>
+<td><code>wan/modules/animate/</code></td>
+<td>角色动画：姿态编码、face 块、CLIP 封装、预处理管线</td>
+</tr>
+<tr>
+<td><code>wan/distributed/</code></td>
+<td>FSDP、DeepSpeed-Ulysses 序列并行、工具函数</td>
+</tr>
+<tr>
+<td><code>wan/text2video.py</code> / <code>image2video.py</code> / <code>textimage2video.py</code> / <code>speech2video.py</code> / <code>animate.py</code></td>
+<td>五个任务 pipeline（378 / 431 / 619 / 706 / 648 行）</td>
+</tr>
+<tr>
+<td><code>wan/utils/</code></td>
+<td><code>fm_solvers_unipc.py</code>（UniPC）、<code>fm_solvers.py</code>（DPM++）、<code>utils.py</code>（保存/合并音频）等</td>
+</tr>
+<tr>
+<td><code>examples/</code></td>
+<td>12 个示例素材（MP3、PNG、JPG、MP4、wav）</td>
+</tr>
+<tr>
+<td><code>tests/</code></td>
+<td><code>test.sh</code> + README（<strong>没有 pytest 用例</strong>）</td>
+</tr>
+<tr>
+<td><code>assets/</code></td>
+<td>5 张说明图：<code>moe_2.png</code>（SNR 切换示意）、<code>moe_arch.png</code>、<code>vae.png</code>、<code>performance.png</code>、<code>comp_effic.png</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>二、五个模型：一张表看完</h2>
+<p><strong>傻瓜层：</strong> 三个小模型各管一件事，两个 14B 大模型管主力任务。名字里的"A"是 advanced，"B"是 billion。</p>
+<h3>技术版 / Technical</h3>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th style="text-align: right;">实测参数量</th>
+<th>任务</th>
+<th>结构</th>
+<th>分辨率 / 时长</th>
+<th>实现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>T2V-A14B</strong></td>
+<td style="text-align: right;"><strong>14,288,491,584</strong>（单专家）</td>
+<td>文本→视频</td>
+<td><strong>MoE 双专家</strong>（高噪/低噪各一份 14B，总 28.58B，每步激活 14B）</td>
+<td>480P(832×480)、720P(1280×720)；默认 <strong>81 帧 @16fps</strong>（≈5.06s）</td>
+<td><code>wan/text2video.py</code></td>
+</tr>
+<tr>
+<td><strong>I2V-A14B</strong></td>
+<td style="text-align: right;"><strong>14,288,901,184</strong>（in_dim=36）</td>
+<td>图片→视频</td>
+<td>MoE 双专家</td>
+<td>同上；输出宽高比<strong>随输入图</strong></td>
+<td><code>wan/image2video.py</code></td>
+</tr>
+<tr>
+<td><strong>TI2V-5B</strong></td>
+<td style="text-align: right;"><strong>4,999,787,712</strong></td>
+<td>文本+图片→视频（统一框架）</td>
+<td><strong>Dense 单模型</strong></td>
+<td>仅 <strong>1280×704</strong>（注意不是 720）；默认 <strong>121 帧 @24fps</strong>（≈5.04s）</td>
+<td><code>wan/textimage2video.py</code></td>
+</tr>
+<tr>
+<td><strong>S2V-14B</strong></td>
+<td style="text-align: right;"><strong>16,925,024,089</strong></td>
+<td>语音→视频（+姿态驱动）</td>
+<td>Dense 单模型</td>
+<td>480P/720P 等 8 种；每段 <code>infer_frames</code> 默认 <strong>80</strong>（须 4 的倍数）@16fps</td>
+<td><code>wan/speech2video.py</code></td>
+</tr>
+<tr>
+<td><strong>Animate-14B</strong></td>
+<td style="text-align: right;"><strong>17,274,816,884</strong></td>
+<td>角色动画 / 角色替换</td>
+<td>Dense 单模型</td>
+<td>720P；每段 <code>clip_len</code> = <strong>77 帧 @30fps</strong></td>
+<td><code>wan/animate.py</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>命名注意</strong>：<code>Animate-14B</code> 和 <code>S2V-14B</code> 名字里的 "14B" 指的是骨干 Wan2.1-14B 级别，但<strong>实测代码里的 DiT 参数量分别是 17.27B 与 16.93B</strong>——因为额外挂了 face adapter（2.52B 级别的音频注入器 / face adapter）。【推导】</p>
+</blockquote>
+<p><strong>各任务的采样设置</strong>（<code>wan/configs/*.py</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>任务</th>
+<th style="text-align: right;">步数</th>
+<th style="text-align: right;">shift</th>
+<th>CFG</th>
+<th style="text-align: right;">边界 t</th>
+<th>高噪步 / 低噪步</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>T2V-A14B</td>
+<td style="text-align: right;">40</td>
+<td style="text-align: right;">12.0</td>
+<td>低噪 3.0 / 高噪 4.0</td>
+<td style="text-align: right;">875</td>
+<td><strong>26 / 14</strong></td>
+</tr>
+<tr>
+<td>I2V-A14B</td>
+<td style="text-align: right;">40</td>
+<td style="text-align: right;">5.0</td>
+<td>3.5 / 3.5</td>
+<td style="text-align: right;">900</td>
+<td><strong>15 / 25</strong></td>
+</tr>
+<tr>
+<td>TI2V-5B (t2v)</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">5.0</td>
+<td>5.0</td>
+<td style="text-align: right;">—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>TI2V-5B (i2v)</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">5.0</td>
+<td>5.0</td>
+<td style="text-align: right;">—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>S2V-14B</td>
+<td style="text-align: right;">40</td>
+<td style="text-align: right;">3.0</td>
+<td>4.5</td>
+<td style="text-align: right;">—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Animate-14B</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">5.0</td>
+<td><strong>1.0 → 默认不做 CFG</strong></td>
+<td style="text-align: right;">—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>三、端到端数据流：一张图看懂 81 帧是怎么变成视频的</h2>
+<p><strong>傻瓜层：</strong> 视频进来先被"压缩"成一个很小的数学网格，模型在那上面反复改，最后再"解压"回视频。</p>
+<h3>技术版 / Technical</h3>
+<p>以 <strong>T2V-A14B，1280×720，81 帧</strong>为例（<code>wan/text2video.py:252-368</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>张量</th>
+<th>数字从哪来</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>像素输入</td>
+<td><code>[81, 720, 1280, 3]</code></td>
+<td>用户设定（<code>frame_num=81</code>，<code>size=1280*720</code>）</td>
+</tr>
+<tr>
+<td>VAE 编码</td>
+<td>→ latent <code>[16, 21, 90, 160]</code></td>
+<td>stride <code>(4,8,8)</code>：<code>F'=(81-1)//4+1=21</code>，<code>H'=720//8=90</code>，<code>W'=1280//8=160</code>，<code>z_dim=16</code></td>
+</tr>
+<tr>
+<td>patchify</td>
+<td><code>Conv3d(16→5120, kernel=(1,2,2), stride=(1,2,2))</code></td>
+<td><code>wan/modules/model.py:378-379</code></td>
+</tr>
+<tr>
+<td>token 网格</td>
+<td><code>21 × 45 × 80</code></td>
+<td>空间被 2×2 patch 化</td>
+</tr>
+<tr>
+<td><strong>token 序列</strong></td>
+<td><strong>S = 21×45×80 = 75,600</strong></td>
+<td><code>text2video.py:257-259</code> 的 <code>seq_len</code> 公式一致</td>
+</tr>
+<tr>
+<td>隐向量</td>
+<td>D = <strong>5120</strong></td>
+<td><code>dim=5120</code></td>
+</tr>
+<tr>
+<td>注意力</td>
+<td>40 头 × head_dim <strong>128</strong></td>
+<td><code>d = D/N = 5120/40</code></td>
+</tr>
+<tr>
+<td>Q/K/V</td>
+<td><code>[1, 75600, 40, 128]</code></td>
+<td><code>x.view(b,s,n,d)</code></td>
+</tr>
+<tr>
+<td>RoPE 频率表</td>
+<td><code>[1024, 64]</code> 复数（22+21+21 段）</td>
+<td><code>model.py:400-405</code></td>
+</tr>
+<tr>
+<td>文本上下文</td>
+<td><code>[1, 512, 5120]</code></td>
+<td>umT5-XXL → Linear(4096→5120)→GELU→Linear(5120→5120)</td>
+</tr>
+<tr>
+<td>调制向量</td>
+<td><code>[1, S, 6, 5120]</code></td>
+<td><code>time_projection</code>: SiLU→Linear(D, 6D) → unflatten(2,(6,D))</td>
+</tr>
+<tr>
+<td>输出头</td>
+<td><code>[1, 75600, 64]</code> → unpatchify → <code>[16, 21, 90, 160]</code></td>
+<td><code>nn.Linear(D, out_dim·prod(patch_size))</code></td>
+</tr>
+<tr>
+<td>VAE 解码</td>
+<td>→ <code>[81, 720, 1280, 3]</code></td>
+<td>rank0 执行 <code>vae.decode(x0)</code>（<code>text2video.py:368</code>）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>TI2V-5B 对照</strong>（1280×704×121）：VAE stride <code>(4,16,16)</code>、z=48 → latent <code>(31,48,44,80)</code> → patch 网格 <code>31×22×40</code> → <strong>S = 27,280</strong>（约为 A14B 720p 的 <strong>1/2.77</strong>），D=3072 / 24 头 / 30 层。</p>
+<p><img alt="图 2｜端到端数据流：从像素到 75,600 个 token 再回来" src="2026-11-08_wan22_fig2-dataflow.svg" /></p>
+<p><strong>图 2｜Wan2.2 的端到端数据流</strong> —— 看这里：蓝色的方块是<strong>视频数据本身</strong>（81×720×1280×3 → 16×21×90×160 → 75,600×5120），橙色方块是<strong>条件</strong>（文本走 T5，图片直接拼通道），紫色是<strong>时间步</strong>。注意从 latent 到 token 这一步，空间被 2×2 patch 化、时间没动。</p>
+<hr />
+<h2>四、一个 Transformer Block 里面长什么样</h2>
+<p><strong>傻瓜层：</strong> 每一层做三件事：先自己看自己、再听文本、最后过一遍 FFN。时间和文本以"调节旋钮"的形式插进来。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>Wan2.2 是单流 DiT</strong>（不是 Flux/SD3 那种双流），<code>WanAttentionBlock</code>（<code>wan/modules/model.py:183-259</code>）内部顺序：</p>
+<ol>
+<li><code>norm1</code>（LayerNorm，<code>elementwise_affine=False</code>）→ <code>self_attn</code>（3D RoPE + FlashAttention）</li>
+<li>残差 <code>x = x + y * e[2]</code></li>
+<li><code>norm3</code>（LayerNorm，<code>elementwise_affine=True</code>）→ <code>cross_attn</code>（文本 K/V）</li>
+<li>残差 <code>x = x + cross_attn(...)</code></li>
+<li><code>norm2</code> → <code>ffn</code>（Linear→GELU(tanh)→Linear）→ 残差 <code>x = x + y * e[5]</code></li>
+</ol>
+<p><strong>AdaLN 调制</strong>（<code>:217, 243-255</code>）：每个 block 有一份 <code>nn.Parameter(randn(1,6,D)/√D)</code>，与时间步 embedding 相加后切成 6 段：</p>
+<table>
+<thead>
+<tr>
+<th>调制向量</th>
+<th>去处</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>e[0], e[1]</code></td>
+<td>self-attn 的 shift / scale</td>
+</tr>
+<tr>
+<td><code>e[2]</code></td>
+<td><strong>self-attn 残差门</strong></td>
+</tr>
+<tr>
+<td><code>e[3], e[4]</code></td>
+<td>FFN 的 shift / scale</td>
+</tr>
+<tr>
+<td><code>e[5]</code></td>
+<td><strong>FFN 残差门</strong></td>
+</tr>
+</tbody>
+</table>
+<p>所有调制计算都在 <code>torch.amp.autocast('cuda', dtype=torch.float32)</code> 下进行（<code>:238,246,254</code>），保证 fp32 精度。</p>
+<p><img alt="图 3｜一个 Transformer Block 的内部结构" src="2026-11-08_wan22_fig3-block.svg" /></p>
+<p><strong>图 3｜单个 Block 的层序与调制去向</strong> —— 看这里：左边橙色的六个 <code>e[0..5]</code> 是时间步投影出来的调制向量，它们分别进入 <strong>shift/scale（作用在归一化之后）</strong> 和 <strong>残差门（作用在残差支路上）</strong>。右上的 <strong>22 / 21 / 21</strong> 是 3D RoPE 把 64 个频率通道分给「时间 / 高 / 宽」三轴的比例。</p>
+<p><strong>3D RoPE 细节</strong>（<code>model.py:27-66, 400-405</code>）：</p>
+<ul>
+<li><code>rope_params(max_seq_len=1024, dim, theta=10000)</code> → 复数频率表 <code>[1024, dim/2]</code></li>
+<li>三段：<code>rope_params(1024, d - 4*(d//6))</code> + <code>2*(d//6)</code> + <code>2*(d//6)</code></li>
+<li><code>rope_apply</code> 中 <code>c = head_dim//2 = 64</code>，<code>split([c-2*(c//3), c//3, c//3]) = [22, 21, 21]</code></li>
+<li>A14B：d=128、d//6=21 → <strong>时间 F 占 22/64 = 34.4%，高 H 21/64 = 32.8%，宽 W 21/64 = 32.8%</strong>（时间略多，符合视频时空 RoPE 的常见配比）</li>
+<li>全程 float64 复数运算再 <code>.float()</code>；序列并行版本另有 <code>pad_freqs</code> 补齐（<code>wan/distributed/sequence_parallel.py:10-20, 52-55</code>）</li>
+</ul>
+<p><strong>注意力后端</strong>（<code>wan/modules/attention.py:24-130</code>）：</p>
+<ul>
+<li><code>flash_attention()</code> 顺序：<code>flash_attn_interface</code>（<strong>FA3</strong>，若安装）→ <code>flash_attn</code>（<strong>FA2</strong>）→ 断言失败</li>
+<li>全部走 <code>flash_attn_varlen_func</code> + <code>cu_seqlens</code> 变长打包</li>
+<li><strong>FA3 不支持 <code>dropout_p</code> 与 <code>window_size</code></strong>（<code>:95</code> 注释）</li>
+<li>SDPA 兜底路径存在，但<strong>主干 <code>WanSelfAttention</code> 直接调用 <code>flash_attention</code> 不会走 SDPA</strong>；SDPA 只被 <code>wan/modules/s2v/auxi_blocks.py</code> 与 <code>wan/modules/animate/face_blocks.py</code> 使用</li>
+</ul>
+<p><strong>窗口与因果性</strong>：<code>window_size = (-1,-1)</code> 出现在<strong>全部 5 个 config</strong> → <strong>全局注意力、无滑动窗口</strong>；<code>causal</code> 默认 <code>False</code> → <strong>DiT 自注意力是非因果的全注意力</strong>。唯一因果的是 VAE 的 <code>CausalConv3d</code>（时间维只左 padding）。S2V 的因果性来自<strong>结构分段</strong>（<code>seg_idx</code> 把 token 切成生成段 / 参考+动作段）而非 mask。</p>
+<hr />
+<h2>五、MoE 真相：两份权重，在时间轴上换班</h2>
+<p><strong>傻瓜层：</strong> 名字叫"混合专家"，实际是"高噪阶段用一套网络、低噪阶段用另一套网络"。不是 router 逐 token 选路，而是<strong>整网替换</strong>。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>README 的说法</strong>（<code>assets/moe_2.png</code> 画的 SNR 曲线）：在 <code>t_moe</code>（SNR = SNR_min/2 处）切换专家。</p>
+<p><strong>代码里的实现是另一种形态</strong>：</p>
+<ul>
+<li>加载：<strong>两份完整独立的 <code>WanModel</code> 权重</strong>（<code>low_noise_model</code> / <code>high_noise_model</code> 两个 checkpoint 子目录，<code>wan/text2video.py:101-117</code>）</li>
+<li>切换：<code>wan/text2video.py:169-201</code> 的 <code>_prepare_model_for_timestep()</code>——<code>if t.item() &gt;= boundary: 用 high_noise_model else low_noise_model</code>，并把<strong>不用的那份 <code>.to('cpu')</code></strong>（offload 模式）</li>
+<li>边界：<code>boundary = self.boundary * self.num_train_timesteps</code>（<code>:306</code>），<code>num_train_timesteps = 1000</code> → T2V <strong>875</strong>、I2V <strong>900</strong></li>
+<li><strong>每个专家都是完整的 40 层</strong>，不存在"专家边界在第 N 层"</li>
+</ul>
+<p><img alt="图 4｜去噪时间轴与专家换班点" src="2026-11-08_wan22_fig4-moe-switch.svg" /></p>
+<p><strong>图 4｜时间轴上的换班点</strong> —— 看这里：横轴是 40 步去噪从 t=1000 走到 t=0，纵轴标出两个专家各自负责的区间。T2V-A14B 在 <strong>t=875</strong> 处换班（高噪 26 步、低噪 14 步），I2V-A14B 在 <strong>t=900</strong> 处换班（15 步 / 25 步）。<strong>shift 越大，切得越早</strong>——这正是 A14B 与 5B 步数分配不同的原因。</p>
+<p><strong>逐步时间表</strong>（复算 <code>wan/utils/fm_solvers_unipc.py:184-213</code>：<code>σ = linspace(1,0,steps+1)[:steps]</code>，<code>σ' = shift·σ/(1+(shift-1)σ)</code>，<code>t = (σ'·1000).astype(int64)</code>）：</p>
+<ul>
+<li>T2V-A14B（shift=12.0，边界 875）：
+  <code>[1000, 997, 995, 993, 990, 988, 985, 982, 979, 976, 972, 969, 965, 961, 957, 952, 947, 941, 936, 929, 923, 915, 907, 898, 888, 878, | 865, 852, 837, 819, 800, 776, 750, 717, 679, 631, 571, 493, 387, 235]</code>
+  （竖线左侧 26 步走高噪专家，右侧 14 步走低噪专家）</li>
+<li>I2V-A14B（shift=5.0，边界 900）：
+  <code>[1000, 994, 989, 984, 978, 972, 965, 959, 952, 945, 937, 929, 921, 912, 902, | 892, 882, 871, 859, 846, 833, 818, 803, 787, 769, 750, 729, 706, 681, 654, 625, 592, 555, 514, 468, 416, 357, 288, 208, 113]</code></li>
+</ul>
+<p><strong>CFG 也随专家切换</strong>：<code>sample_guide_scale = guide_scale[1] if t &gt;= boundary else guide_scale[0]</code>。</p>
+<p><strong>单卡场景的隐藏成本</strong>：每次切换伴随 CPU↔GPU 搬运，T2V 单卡要搬 <strong>26 次</strong>、I2V <strong>15 次</strong>。这是 A14B 单卡远慢于 5B 的原因之一。</p>
+<p>仓库自带的 SNR 切换示意图（原图，未改动）：</p>
+<p><img alt="Wan 官方 MoE 切换示意图（原图）" src="2026-11-08_wan22_assets-moe-snr.png" /></p>
+<p><strong>图 5｜官方示意图</strong> —— 看这里：上半部分是 SNR 曲线与 <code>t_moe</code> 的交点，下半部分是两条验证损失曲线。</p>
+<hr />
+<h2>六、条件是怎么进去的：三条不同的路</h2>
+<p><strong>傻瓜层：</strong> 文本、图像、声音，进模型的方式<strong>完全不一样</strong>——文本走"旁门"（交叉注意力），图像直接拼进画面，声音在指定的层里"横插一脚"。</p>
+<h3>技术版 / Technical</h3>
+<p><img alt="图 6｜三条条件注入路径" src="2026-11-08_wan22_fig6-conditions.svg" /></p>
+<p><strong>图 6｜文本 / 图像 / 音频的三条注入路径</strong> —— 看这里：橙色是文本（走每个 block 的交叉注意力，K/V 来自 512 个文本 token）；蓝色是图像（<strong>不经过 CLIP，直接拼通道</strong>）；紫色是音频（<strong>只在 12 个指定层</strong>做 AdaLN + 音频交叉注意力）。</p>
+<p><strong>6.1 文本（所有任务共用）</strong></p>
+<ul>
+<li>编码器：<code>wan/modules/t5.py</code> 的 <code>T5EncoderModel</code>，底层 <strong>umT5-XXL（encoder_only=True）</strong>（<code>:456-469</code>）：vocab 256384、dim 4096、dim_attn 4096、dim_ffn 10240、64 头、<strong>24 层 encoder</strong>、num_buckets 32</li>
+<li>权重：<code>models_t5_umt5-xxl-enc-bf16.pth</code>；tokenizer 取 <code>google/umt5-xxl</code></li>
+<li>分词：<code>padding='max_length', truncation=True, max_length=512</code>（<code>tokenizers.py:54-59</code>）→ <strong>超长 prompt 被直接截断</strong></li>
+<li>进入 DiT：<code>text_embedding = Linear(4096→D) → GELU(tanh) → Linear(D→D)</code>（<code>model.py:380-382</code>），文本上下文补零到 <code>text_len=512</code></li>
+<li>交叉注意力：Q 来自视频 token，K/V 来自文本（<code>model.py:158-180</code>）；<code>context_lens = None</code> → 文本侧不做 padding mask（已在 tokenizer 侧截断到真实长度）</li>
+<li><strong>参数量 5,680,910,336【解析推导】</strong>（diffusers 未安装，用等价结构推导）</li>
+</ul>
+<p><strong>6.2 图像条件（A14B-I2V 与 Animate 的方式不同）</strong></p>
+<ul>
+<li><strong>I2V-A14B 不用 CLIP</strong>：<code>concat([noise(16ch), mask(4ch), VAE首帧(16ch)])</code> = <strong>36 通道</strong>，走 <code>in_dim=36</code>；mask 通道告诉模型"首帧是已知的"</li>
+<li><strong>Animate 用 CLIP</strong>：open-clip（XLM-R + ViT-H/14，fp16）→ <code>MLPProj(1280→5120)</code> → <strong>257 个 token 前置到文本 context</strong>（总 769 token）</li>
+<li>I2V 输出尺寸随输入图比例：<code>lat_h = round(sqrt(max_area·ar)//8//2×2)</code>、<code>lat_w = round(sqrt(max_area/ar)//8//2×2)</code>（<code>image2video.py:264-269</code>）。16:9 输入 → 网格 <code>21×45×80</code>、S=75,600；832×1104 竖图 → 网格 <code>21×75×57</code>、<strong>S=89,775</strong></li>
+</ul>
+<p><strong>6.3 音频条件（S2V）</strong></p>
+<ul>
+<li><strong>wav2vec2-large-xlsr-53</strong>，<strong>25 层 hidden 全部拼接</strong></li>
+<li>50 fps → 30 fps 插值 → 按 fps 分桶 → <code>CausalAudioEncoder</code> 层加权</li>
+<li>注入位置：<strong>12 个指定层</strong> <code>[0,4,8,12,16,20,24,27,30,33,36,39]</code> 上做 AdaLN + 音频交叉注意力</li>
+<li><strong>CFG 的 uncond 分支把音频置零</strong></li>
+<li>音频长度决定视频长度：<code>num_repeat = nr</code> 由音频时长算出（<code>speech2video.py:487-489</code>）</li>
+</ul>
+<hr />
+<h2>七、推理循环：什么跑一次，什么跑每一步</h2>
+<p><strong>傻瓜层：</strong> 文本、图片、音频<strong>只处理一次</strong>；真正的重活在每一步：换专家、跑两遍（一次带条件一次不带）、再解噪声。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>通用骨架</strong>（<code>generate.py</code> → pipeline）：</p>
+<ol>
+<li><code>_parse_args()</code> → <code>_validate_args()</code>：task 必须在 <code>WAN_CONFIGS</code> 中；<code>sample_steps/sample_shift/sample_guide_scale/frame_num</code> 为 None 时取 config 默认；<code>base_seed &lt; 0</code> → <code>random.randint</code>；非 s2v 任务的 <code>size</code> 必须在 <code>SUPPORTED_SIZES[task]</code> 里</li>
+<li><code>generate()</code>：设 CUDA device；<code>world_size&gt;1</code> → <code>init_process_group(backend='nccl')</code>；<code>ulysses_size&gt;1</code> → <code>init_distributed_group()</code></li>
+<li><code>offload_model</code> 默认 <strong><code>False if world_size&gt;1 else True</code></strong>（<code>:322-323</code>）</li>
+<li>可选 prompt 扩展（rank0 广播）</li>
+<li>按 task 分发到 <code>WanT2V / WanTI2V / WanAnimate / WanS2V / WanI2V</code></li>
+<li>保存：<code>save_video(..., fps=cfg.sample_fps, quality=8)</code>（imageio + libx264）；S2V 再用 ffmpeg 合并音频（aac 192k，<code>-shortest</code>）</li>
+</ol>
+<p><strong>T2V-A14B 逐步流程</strong>（<code>wan/text2video.py:252-368</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>步</th>
+<th>动作</th>
+<th>出处</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>构造 <code>target_shape = (16, (F-1)//4+1, H//8, W//8)</code>、<code>seq_len = ceil(H'·W'/(p_h·p_w)·F'/sp_size)·sp_size</code></td>
+<td><code>:252-259</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>T5 编码正/负 prompt → <code>context</code>, <code>context_null</code></td>
+<td><code>:267-277</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>noise = randn(target_shape, float32)</code>，用 <code>seed_g</code> 固定</td>
+<td><code>:279-288</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>建调度器：<code>unipc</code> → <code>FlowUniPCMultistepScheduler(num_train_timesteps=1000, shift=1, use_dynamic_shifting=False)</code> + <code>set_timesteps(steps, shift=shift)</code>；<code>dpm++</code> → <code>FlowDPMSolverMultistepScheduler</code> + <code>get_sampling_sigmas(steps, shift)</code></td>
+<td><code>:308-327</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>每步</strong>：<code>_prepare_model_for_timestep(t, boundary, offload_model)</code> → 选 high/low 专家并搬运设备</td>
+<td><code>:341-342</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>sample_guide_scale = guide_scale[1] if t&gt;=boundary else guide_scale[0]</code></td>
+<td><code>:343-344</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>两次前向</strong>（cond / uncond）→ CFG 合成 <code>noise_pred = u + s·(c-u)</code></td>
+<td><code>:346-352</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>sample_scheduler.step(...)</code> 更新 latent</td>
+<td><code>:354-360</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td>结束后 <code>vae.decode(x0)</code>（rank0）</td>
+<td><code>:368</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>调度器细节</strong>：UniPC 默认 <code>solver_order=2</code>、<code>solver_type='bh2'</code>、<code>predict_x0=True</code>、<code>prediction_type='flow_prediction'</code>（<code>fm_solvers_unipc.py:79-98</code>）；DPM++ 用 <code>algorithm_type='dpmsolver++'</code>、<code>solver_type='midpoint'</code>（<code>fm_solvers.py:132-146</code>）。<strong>shift 公式</strong>：<code>σ' = shift·σ / (1 + (shift-1)·σ)</code>。</p>
+<p><strong>每步 DiT 前向次数 = 2</strong>（CFG 的 cond 与 uncond），Animate 因为 <code>guide_scale=1.0</code> 默认只跑 <strong>1 次</strong>。</p>
+<p><strong>VAE 长视频策略</strong>：<strong>没有空间 tiling</strong>。两套 VAE 都是「逐 latent 帧解码 + feature cache」，编码按 1,4,4,4… 分块。<strong>长视频的显存压力在 DiT 的序列长度上，不在 VAE</strong>。</p>
+<p><strong>S2V 的分段滑窗</strong>：每段 <code>infer_frames</code>（默认 80）生成一段，<code>lat_target_frames = (infer_frames+3+73)//4 - lat_motion_frames</code>；解码后与 <code>motion_latents</code> 拼接、丢掉重叠帧、更新 <code>videos_last_frames</code> 供下一段。</p>
+<p><strong>Animate 的滑窗</strong>：<code>clip_len=77</code>，<code>start += clip_len - refert_num</code>；face adapter 每 <strong>5 层</strong>注入一次（<code>block_idx % 5 == 0</code>，40 层共 <strong>8 个 adapter 层</strong>）。</p>
+<hr />
+<h2>八、参数与显存：拆开算一遍</h2>
+<p><strong>傻瓜层：</strong> 14B 这个数字里，<strong>98.4% 是 40 个一模一样的 Transformer 层</strong>，VAE 和 T5 都在外面单独算。</p>
+<h3>技术版 / Technical</h3>
+<p><strong>实测方法</strong>：把仓库源码 import，用 <code>torch.device('meta')</code> 实例化（不分配显存），逐参数 <code>numel()</code> 求和。torch 2.13.0；diffusers 未安装 → 用等价 stub 替代 <code>ConfigMixin / ModelMixin / AdaLayerNorm / PeftAdapterMixin</code>（<code>AdaLayerNorm</code> stub 与 diffusers 真实定义一致：<code>Linear(embedding_dim, output_dim*2)</code>）。<strong>仓库文件未做任何修改。</strong></p>
+<p><strong>A14B 单层分解</strong>（<code>dim=5120, ffn_dim=13824, heads=40, layers=40</code>）：</p>
+<table>
+<thead>
+<tr>
+<th>子模块</th>
+<th>公式</th>
+<th style="text-align: right;">参数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>self_attn.q/k/v/o</code></td>
+<td>4 × (5120×5120 + 5120)</td>
+<td style="text-align: right;">104,857,600</td>
+</tr>
+<tr>
+<td><code>self_attn.norm_q/norm_k</code></td>
+<td>2 × 5120（RMSNorm，无 bias）</td>
+<td style="text-align: right;">10,240</td>
+</tr>
+<tr>
+<td><code>cross_attn.q/k/v/o</code></td>
+<td>4 × (5120×5120 + 5120)</td>
+<td style="text-align: right;">104,857,600</td>
+</tr>
+<tr>
+<td><code>cross_attn.norm_q/norm_k</code></td>
+<td>2 × 5120</td>
+<td style="text-align: right;">10,240</td>
+</tr>
+<tr>
+<td>FFN</td>
+<td>5120×13824 + 13824 + 13824×5120 + 5120</td>
+<td style="text-align: right;">141,576,704</td>
+</tr>
+<tr>
+<td>modulation</td>
+<td>1×6×5120</td>
+<td style="text-align: right;">30,720</td>
+</tr>
+<tr>
+<td>norm1/norm2/norm3</td>
+<td>LayerNorm（部分无 affine）</td>
+<td style="text-align: right;">~10,240</td>
+</tr>
+<tr>
+<td><strong>单层合计</strong></td>
+<td></td>
+<td style="text-align: right;"><strong>351,394,304</strong></td>
+</tr>
+<tr>
+<td><strong>×40 层</strong></td>
+<td></td>
+<td style="text-align: right;"><strong>14.056B（占 98.4%）</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>其他组件</strong>：Wan2.1-VAE <strong>126,892,531</strong>（encoder 53,595,872 + decoder 73,295,331）；Wan2.2-VAE <strong>704,688,668</strong>（encoder 149,627,776 + decoder 555,049,228，≈5.6× 于 2.1 版）；umT5-XXL <strong>5,680,910,336【解析推导】</strong>；CLIP ≈1.19B【解析推导】。</p>
+<p><img alt="图 7｜参数都花在哪：五个模型的参数量与单层分解" src="2026-11-08_wan22_fig7-params.svg" /></p>
+<p><strong>图 7｜参数分布</strong> —— 看这里：左边五根柱子是各模型总参数量（T2V-A14B 14.29B、TI2V-5B 5.00B、S2V-14B 16.93B、Animate-14B 17.27B）；右边是 A14B <strong>单层</strong>的构成——自注意力、交叉注意力、FFN 三块几乎三等分，FFN 最大。调模型的"大小旋钮"其实只有三个：层数 40、宽度 5120、头数 40。</p>
+<p><strong>显存下限</strong>（bf16 权重）：</p>
+<ul>
+<li>A14B <strong>两个专家同时常驻 = 53.23 GiB</strong> → 单卡必须 ≥ 80GB（或开 <code>--offload_model True</code>）</li>
+<li>TI2V-5B：单卡 <strong>24GB</strong>（RTX 4090 即可）</li>
+<li>激活显存随序列长度平方增长：720p/81 帧时 S=75,600，单层注意力矩阵 <code>75600² × 2 bytes ≈ 10.9 GiB</code>（FlashAttention 不物化它，但 QKV/激活仍是主要开销）→ <strong>降分辨率/降帧数比降其他开关更有效</strong></li>
+</ul>
+<p><strong>多卡</strong>：<code>FSDP + DeepSpeed-Ulysses 序列并行</code>（<code>wan/distributed/</code>）。<code>--ulysses_size</code> 必须等于 world_size，且 <code>num_heads % ulysses_size == 0</code>。</p>
+<hr />
+<h2>九、配置：本仓库一个 YAML 都没有</h2>
+<p><strong>傻瓜层：</strong> 别去找 yaml。这里的配置全是 Python 写的对象，改配置就改代码。</p>
+<h3>技术版 / Technical</h3>
+<blockquote>
+<p><code>git ls-files | grep -E '\.ya?ml$'</code> → <strong>零命中</strong>。所有"配置"都是 <code>wan/configs/*.py</code> 里的 <code>EasyDict</code>。</p>
+</blockquote>
+<p><strong><code>wan/configs/shared_config.py</code>（共享）</strong>：<code>t5_model='umt5_xxl'</code>、<code>t5_cpu=False</code>、<code>t5_fsdp=False</code>、<code>convert_model_dtype=False</code>、<code>offload_model=False</code>（多卡时为 False，单卡默认 True）。</p>
+<p><strong><code>wan/configs/__init__.py</code> 注册表</strong>：<code>WAN_CONFIGS</code> 把 task 名映射到配置类；<code>SUPPORTED_SIZES</code> 给出每个任务允许的尺寸：</p>
+<table>
+<thead>
+<tr>
+<th>task</th>
+<th>允许尺寸</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>t2v-A14B</code></td>
+<td><code>1280*720</code>、<code>720*1280</code>、<code>832*480</code>、<code>480*832</code></td>
+</tr>
+<tr>
+<td><code>i2v-A14B</code></td>
+<td>同上</td>
+</tr>
+<tr>
+<td><code>ti2v-5B</code></td>
+<td><strong>仅</strong> <code>1280*704</code>、<code>704*1280</code></td>
+</tr>
+<tr>
+<td><code>s2v-14B</code></td>
+<td>8 种尺寸（480P/720P/1024×704 等）</td>
+</tr>
+<tr>
+<td><code>animate-14B</code></td>
+<td><code>1280*720</code>、<code>720*1280</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>关键配置键</strong>（各任务 config 汇总）：</p>
+<table>
+<thead>
+<tr>
+<th>键</th>
+<th>默认</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>frame_num</code></td>
+<td>81（A14B）/ 121（5B）/ 77（Animate）</td>
+<td>输出帧数，<strong>须 4n+1</strong></td>
+</tr>
+<tr>
+<td><code>sample_steps</code></td>
+<td>40 / 50 / 20</td>
+<td>去噪步数</td>
+</tr>
+<tr>
+<td><code>sample_shift</code></td>
+<td>12.0 / 5.0 / 3.0 / 5.0</td>
+<td>调度器 shift，<strong>决定专家切分点</strong></td>
+</tr>
+<tr>
+<td><code>sample_guide_scale</code></td>
+<td>(3.0, 4.0) / (3.5,3.5) / 5.0 / 4.5 / 1.0</td>
+<td>CFG，(低噪, 高噪)</td>
+</tr>
+<tr>
+<td><code>boundary</code></td>
+<td>0.875 / 0.900</td>
+<td>专家切换阈值 ×1000</td>
+</tr>
+<tr>
+<td><code>vae_stride</code></td>
+<td>(4,8,8) / (4,16,16)</td>
+<td>VAE 压缩比</td>
+</tr>
+<tr>
+<td><code>patch_size</code></td>
+<td>(1,2,2)</td>
+<td>DiT patch</td>
+</tr>
+<tr>
+<td><code>dim</code> / <code>ffn_dim</code> / <code>num_heads</code> / <code>num_layers</code></td>
+<td>5120/13824/40/40；3072/14336/24/30</td>
+<td>主干尺寸</td>
+</tr>
+<tr>
+<td><code>in_dim</code> / <code>out_dim</code></td>
+<td>16/16（T2V）、36/16（I2V、Animate）、48/48（5B）</td>
+<td>输入输出通道</td>
+</tr>
+<tr>
+<td><code>sample_fps</code></td>
+<td>16 / 24（5B）/ 30（Animate）</td>
+<td>输出帧率</td>
+</tr>
+<tr>
+<td><code>text_len</code></td>
+<td>512</td>
+<td>T5 上下文长度</td>
+</tr>
+<tr>
+<td><code>window_size</code></td>
+<td><code>(-1,-1)</code></td>
+<td>全部为全局注意力</td>
+</tr>
+</tbody>
+</table>
+<p><strong>CLI 参数</strong>（<code>generate.py</code>）：<code>--task</code>、<code>--size</code>、<code>--sample_steps</code>、<code>--sample_shift</code>、<code>--sample_guide_scale</code>、<code>--frame_num</code>、<code>--image</code>、<code>--audio</code>、<code>--base_seed</code>、<code>--offload_model</code>、<code>--convert_model_dtype</code>、<code>--t5_cpu</code>、<code>--t5_fsdp</code>、<code>--ulysses_size</code>、<code>--num_clip</code>、<code>--infer_frames</code>、<code>--refert_num</code>、<code>--replace_flag</code>、<code>--use_relighting_lora</code> 等。</p>
+<hr />
+<h2>十、训练：本仓库零训练代码</h2>
+<p><strong>傻瓜层：</strong> 这里只有"怎么用"，没有"怎么训"。训练在别的仓库/框架里。</p>
+<h3>技术版 / Technical</h3>
+<ul>
+<li>仓库里<strong>没有 optimizer、dataset、trainer、loss</strong>（<code>grep</code> 零命中）；<code>Makefile</code> 只有 <code>format</code> 一条目标</li>
+<li>README 声称 Wan2.2 相比 Wan2.1 "<strong>+65.6% more images and +83.2% more videos</strong>"（数据规模），但<strong>仓库内无数据支撑代码</strong></li>
+<li>训练实现指向第三方（<strong>DiffSynth-Studio</strong> 等），论文 arXiv <strong>2503.20314</strong></li>
+<li>仓库里<strong>没有 LoRA 训练脚本、没有量化脚本、没有 TensorRT/ONNX 导出</strong></li>
+</ul>
+<hr />
+<h2>十一、怎么跑</h2>
+<pre><code class="language-bash"># 依赖：torch &gt;= 2.4.0；flash_attn 最后装（README 提示）
+pip install -r requirements.txt
+# flash-attn PEP 517 报错时：
+pip install git+https://github.com/Dao-AILab/flash-attention.git
+
+# 权重（两个专家目录都要下）
+huggingface-cli download Wan-AI/Wan2.2-T2V-A14B --local-dir ./Wan2.2-T2V-A14B
+
+# 单卡
+python generate.py --task t2v-A14B --size 1280*720 --frame_num 81 \
+  --ckpt_dir ./Wan2.2-T2V-A14B --prompt &quot;…&quot; --sample_steps 40 --sample_shift 12.0 \
+  --sample_guide_scale 3.0 4.0 --offload_model True --convert_model_dtype --t5_cpu
+
+# 5B：单卡 24GB 即可，但分辨率是 1280*704
+python generate.py --task ti2v-5B --size 1280*704 --frame_num 121 --ckpt_dir ./Wan2.2-TI2V-5B --prompt &quot;…&quot;
+
+# 多卡（FSDP + DeepSpeed Ulysses）
+torchrun --nproc_per_node 8 generate.py --task t2v-A14B --size 1280*720 \
+  --ckpt_dir ./Wan2.2-T2V-A14B --prompt &quot;…&quot; --ulysses_size 8 --t5_fsdp
+
+# Wan-Animate 是两步：先预处理（出 src_pose.mp4 / src_face.mp4 / src_ref.png），再推理
+</code></pre>
+<p><strong>README 提到的第三方集成</strong>（本仓库无对应代码）：ComfyUI、Diffusers、vLLM、SGLang、EasyAnimate 等。</p>
+<hr />
+<h2>九、仓库自带的原图与厂商给出的数据</h2>
+<p><strong>傻瓜层：</strong> 这个仓库还附了四张"说明图"。它们是官方自己画的架构图、自己跑出来的对比表——<strong>看这些图比读代码更快理解设计意图，但里面的数字都是厂商自测口径</strong>。</p>
+<h3>技术版 / Technical</h3>
+<p><img alt="官方 MoE 架构示意（原图，未改动）" src="2026-11-08_wan22_assets-moe-arch.png" /></p>
+<p><strong>图 8｜官方 MoE 架构示意</strong> —— 看这里：左边 (a) Early Denoising Stage 高亮 <strong>High-Noise Expert</strong>（淡出 Low-Noise），右边 (b) Later Denoising Stage 高亮 <strong>Low-Noise Expert</strong>。这正是前面那个"整模型换班"的官方画法。</p>
+<p><img alt="官方 VAE 重建质量对比表（原图，未改动）" src="2026-11-08_wan22_assets-vae.png" /></p>
+<p><strong>图 9｜VAE 重建质量对比（原表）</strong> —— 看这里：<strong>Wan2.2-VAE 是唯一把信息压缩率提到 64 的那一行</strong>（4×16×16、48 维），而它的 PSNR/SSIM/LPIPS 还都不输于别人的 48 倍压缩。</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>压缩比</th>
+<th style="text-align: right;">特征维度</th>
+<th style="text-align: right;">信息压缩率</th>
+<th style="text-align: right;">PSNR ↑</th>
+<th style="text-align: right;">SSIM ↑</th>
+<th style="text-align: right;">LPIPS ↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SVD</td>
+<td>1×8×8</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">48</td>
+<td style="text-align: right;">28.307</td>
+<td style="text-align: right;">0.816</td>
+<td style="text-align: right;">0.067</td>
+</tr>
+<tr>
+<td>Cosmos</td>
+<td>4×8×8</td>
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">48</td>
+<td style="text-align: right;">29.632</td>
+<td style="text-align: right;">0.863</td>
+<td style="text-align: right;">0.132</td>
+</tr>
+<tr>
+<td>Hunyuan</td>
+<td>4×8×8</td>
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">48</td>
+<td style="text-align: right;"><strong>33.298</strong></td>
+<td style="text-align: right;"><strong>0.922</strong></td>
+<td style="text-align: right;">0.023</td>
+</tr>
+<tr>
+<td>CogVideoX1.5</td>
+<td>4×8×8</td>
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">48</td>
+<td style="text-align: right;">32.955</td>
+<td style="text-align: right;"><strong>0.922</strong></td>
+<td style="text-align: right;">0.040</td>
+</tr>
+<tr>
+<td>Wan2.1-VAE</td>
+<td>4×8×8</td>
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">48</td>
+<td style="text-align: right;">32.222</td>
+<td style="text-align: right;">0.911</td>
+<td style="text-align: right;">0.026</td>
+</tr>
+<tr>
+<td><strong>Wan2.2-VAE</strong></td>
+<td><strong>4×16×16</strong></td>
+<td style="text-align: right;"><strong>48</strong></td>
+<td style="text-align: right;"><strong>64</strong></td>
+<td style="text-align: right;"><strong>33.223</strong></td>
+<td style="text-align: right;"><strong>0.922</strong></td>
+<td style="text-align: right;"><strong>0.022</strong></td>
+</tr>
+</tbody>
+</table>
+<p><img alt="官方六维打分对比（原图，未改动）" src="2026-11-08_wan22_assets-performance.png" /></p>
+<p><strong>图 10｜六个维度的打分对比（原图）</strong> —— 看这里：带斜线的深蓝柱是 <strong>Wan2.2-T2V-A14B</strong>。它在「美学质量 85.3」上超过 Seedance 1.0（84.3）与 Wan2.1-T2V-14B（75.9），在「相机控制 39.6」上也是六家里最高之一；但「动态程度 52.0」只排在中游。</p>
+<p><img alt="官方耗时与显存表（原图，未改动）" src="2026-11-08_wan22_assets-comp-effic.png" /></p>
+<p><strong>图 11｜耗时（秒）/ 峰值显存（GB）表（原图）</strong> —— 看这里：H100/H800 上 <strong>T2V-A14B 720P 单卡 1041.5 秒 / 59.8 GB</strong>，8 卡降到 <strong>155.1 秒 / 37.1 GB</strong>；而 4090 上 <strong>TI2V-5B 720P 单卡 534.7 秒 / 22.9 GB</strong>——这就是 5B 版本"RTX 4090 就能跑"的来源。</p>
+<p>原表全量数据（<code>assets/comp_effic.png</code>，单位：秒 / GB）：</p>
+<table>
+<thead>
+<tr>
+<th>GPU</th>
+<th>模型</th>
+<th>分辨率</th>
+<th style="text-align: right;">1 卡</th>
+<th style="text-align: right;">4 卡</th>
+<th style="text-align: right;">8 卡</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4090</td>
+<td>TI2V-5B T2V</td>
+<td>720P</td>
+<td style="text-align: right;">534.7 / 22.9</td>
+<td style="text-align: right;">231.3 / 22.6</td>
+<td style="text-align: right;">157.2 / 22.6</td>
+</tr>
+<tr>
+<td>4090</td>
+<td>TI2V-5B I2V</td>
+<td>720P</td>
+<td style="text-align: right;">524.8 / 22.8</td>
+<td style="text-align: right;">227.3 / 22.6</td>
+<td style="text-align: right;">160.1 / 22.6</td>
+</tr>
+<tr>
+<td>H20</td>
+<td>T2V-A14B</td>
+<td>480P</td>
+<td style="text-align: right;">1133.9 / 41.3</td>
+<td style="text-align: right;">306.6 / 40.9</td>
+<td style="text-align: right;">170.5 / 26.2</td>
+</tr>
+<tr>
+<td>H20</td>
+<td>T2V-A14B</td>
+<td>720P</td>
+<td style="text-align: right;">4048.7 / 59.8</td>
+<td style="text-align: right;">1067.8 / 51.7</td>
+<td style="text-align: right;">564.7 / 37.0</td>
+</tr>
+<tr>
+<td>H20</td>
+<td>I2V-A14B</td>
+<td>480P</td>
+<td style="text-align: right;">1117.4 / 41.0</td>
+<td style="text-align: right;">305.4 / 40.8</td>
+<td style="text-align: right;">173.4 / 26.1</td>
+</tr>
+<tr>
+<td>H20</td>
+<td>I2V-A14B</td>
+<td>720P</td>
+<td style="text-align: right;">4054.7 / 59.7</td>
+<td style="text-align: right;">1076.9 / 51.6</td>
+<td style="text-align: right;">577.0 / 37.0</td>
+</tr>
+<tr>
+<td>A100/A800</td>
+<td>T2V-A14B</td>
+<td>480P</td>
+<td style="text-align: right;">785.7 / 41.3</td>
+<td style="text-align: right;">215.2 / 40.9</td>
+<td style="text-align: right;">119.9 / 26.3</td>
+</tr>
+<tr>
+<td>A100/A800</td>
+<td>T2V-A14B</td>
+<td>720P</td>
+<td style="text-align: right;">2735.7 / 59.8</td>
+<td style="text-align: right;">725.3 / 51.7</td>
+<td style="text-align: right;">386.7 / 37.0</td>
+</tr>
+<tr>
+<td>A100/A800</td>
+<td>I2V-A14B</td>
+<td>480P</td>
+<td style="text-align: right;">810.0 / 41.0</td>
+<td style="text-align: right;">215.4 / 40.7</td>
+<td style="text-align: right;">121.6 / 26.1</td>
+</tr>
+<tr>
+<td>A100/A800</td>
+<td>I2V-A14B</td>
+<td>720P</td>
+<td style="text-align: right;">2810.9 / 59.7</td>
+<td style="text-align: right;">730.5 / 51.6</td>
+<td style="text-align: right;">393.4 / 37.0</td>
+</tr>
+<tr>
+<td>H100/H800</td>
+<td>T2V-A14B</td>
+<td>480P</td>
+<td style="text-align: right;">326.9 / 41.3</td>
+<td style="text-align: right;">91.7 / 40.9</td>
+<td style="text-align: right;">51.5 / 26.3</td>
+</tr>
+<tr>
+<td>H100/H800</td>
+<td>T2V-A14B</td>
+<td>720P</td>
+<td style="text-align: right;">1041.5 / 59.8</td>
+<td style="text-align: right;">288.7 / 51.7</td>
+<td style="text-align: right;">155.1 / 37.1</td>
+</tr>
+<tr>
+<td>H100/H800</td>
+<td>I2V-A14B</td>
+<td>480P</td>
+<td style="text-align: right;">327.8 / 41.0</td>
+<td style="text-align: right;">92.4 / 40.8</td>
+<td style="text-align: right;">52.9 / 26.1</td>
+</tr>
+<tr>
+<td>H100/H800</td>
+<td>I2V-A14B</td>
+<td>720P</td>
+<td style="text-align: right;">1055.9 / 59.7</td>
+<td style="text-align: right;">290.4 / 51.6</td>
+<td style="text-align: right;">159.0 / 37.0</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>以上四张图与两张表均取自仓库 <code>assets/</code> 目录的<strong>原文件</strong>，未做任何修改；其中的分数与耗时是<strong>厂商自测口径</strong>，本报告未在本机复现（本机无 CUDA）。</p>
+</blockquote>
+<hr />
+<h2>为什么 / 坑 — Why &amp; pitfalls</h2>
+<ol>
+<li><strong>"MoE" 两个字会骗人</strong>。没有 router、没有 token 路由、没有稀疏激活：<strong>两份完整 40 层权重，按 timestep 阈值整网替换</strong>，还伴随 CPU↔GPU 搬运。单卡场景 T2V 要搬 26 次。README 的 SNR 阈值说法在代码里被简化成 <code>t ≥ 875</code> 硬阈值。</li>
+<li><strong>步数分配和流传的说法不一样</strong>。实测 T2V-A14B 是 <strong>26 高噪 + 14 低噪</strong>，I2V-A14B 是 <strong>15 + 25</strong>——<strong>shift 越大切得越早</strong>（12.0 → 早切；5.0 → 晚切）。别把"50 步高噪 + 10 步低噪"当既定事实。</li>
+<li><strong>图生视频不用 CLIP</strong>。A14B-I2V 是 36 通道拼通道（噪声 16 + mask 4 + 首帧 16）；CLIP 只服务于 Animate。</li>
+<li><strong>名字里的 14B 不等于 14B</strong>。Animate 实测 <strong>17.27B</strong>、S2V 实测 <strong>16.93B</strong>；A14B 双专家合计 <strong>28.58B</strong>，而 README 说 27B。</li>
+<li><strong>⚠️ TI2V-5B 的 I2V 路径 timestep 恒为 0（疑似 bug）</strong>：<code>textimage2video.py</code> 的 I2V 分支用 <code>masks_like(..., zero=True)</code>，置零的是<strong>通道 0</strong>，而 <code>mask2[0][0]</code> 取的正是通道 0 ⇒ <code>temp_ts</code> 全 0，DiT 每步都收到 <code>t=0</code>；同文件 t2v 分支用 <code>zero=False</code> 则正常。<strong>【逐行推导，未实机复现】</strong></li>
+<li><strong>⚠️ CLI 的 <code>--refert_num</code> 默认 77 会直接崩</strong>：<code>animate.py:351</code> 断言只接受 1 或 5，不显式传参会 AssertionError；且 Animate <strong>函数</strong>默认 solver 是 <code>dpm++</code>，而 <strong>CLI</strong> 默认 <code>unipc</code>。</li>
+<li><strong>⚠️ CPU 上连 import 都会崩</strong>：<code>wan/modules/t5.py:478</code> 把 <code>torch.cuda.current_device()</code> 写成<strong>函数定义时求值的默认参数</strong> → 无 CUDA 的机器上 <code>import wan.modules.t5</code> 直接抛异常。<strong>本仓库不支持 CPU 推理。</strong></li>
+<li><strong>head_dim 必须 ≤ 256 且必须在 CUDA</strong>（<code>attention.py:54</code> 的断言）；主干<strong>不会走 SDPA 兜底</strong>。</li>
+<li><strong>仓库没有 fp8、没有 SageAttention、没有 VAE 空间 tiling</strong>（<code>grep -i sage|fp8</code> 在 <code>wan/</code> 内零命中）。想省显存只能靠 <code>offload_model</code>、降分辨率、降帧数。</li>
+<li><strong><code>transformers</code> 版本两个文件不一致</strong>：<code>requirements.txt:6</code> 钉 <code>&lt;=4.51.3</code>，<code>pyproject.toml:20</code> 只写 <code>&gt;=4.49.0</code> → 用 pip 装 requirements 更严格。</li>
+<li><strong><code>--t5_cpu</code> 与 <code>--t5_fsdp</code> 互斥</strong>；<strong><code>--convert_model_dtype</code> 只在非 FSDP 时生效</strong>（<code>text2video.py:162-165</code>），多卡下要靠 FSDP MixedPrecision。</li>
+<li><strong>尺寸约束很硬</strong>：<code>ti2v-5B</code> <strong>没有 1280×720</strong>（只有 1280×704）；帧数必须 <strong>4n+1</strong>；I2V/TI2V-I2V 的 <code>--size</code> 表示<strong>面积</strong>而非宽高，实际宽高随输入图比例变；5B 的 I2V 还要求宽高是 32 的倍数。</li>
+<li><strong>T5 只有 512 token</strong>，超长 prompt 被<strong>静默截断</strong>——这正是 prompt 扩展功能存在的原因。</li>
+<li><strong>S2V 的音频长度决定视频长度</strong>，最终 mp4 时长取音频与视频<strong>较短者</strong>（ffmpeg <code>-shortest</code>）。</li>
+<li><strong>A14B 必须把两个专家都下下来</strong>，少任何一个都会在加载时失败。</li>
+</ol>
+<hr />
+<h2>未验证 · 风险 · 待定 — Unverified · risks · open</h2>
+<ol>
+<li><strong>各 checkpoint 的 <code>config.json</code> 未验证</strong>：仓库不含权重，<code>in_dim/out_dim</code> 等由代码路径推导（T2V=16/16、I2V 与 Animate=36/16、TI2V=48/48），未经权重核对。</li>
+<li><strong>README 的 "27B 总参数" 与推导的 28.58B 不符</strong>，差异原因未知。</li>
+<li><strong>所有速度/显存数字都来自仓库里的图</strong>（<code>assets/comp_effic.png</code>、<code>assets/performance.png</code>），<strong>未在本机复现</strong>（本机无 CUDA、torch 为 CPU 版）。</li>
+<li><strong>VAE 重建质量指标</strong>（PSNR/SSIM/LPIPS）来自 <code>assets/vae.png</code>，未复现。</li>
+<li><strong>TI2V-5B I2V 路径 timestep 恒 0</strong> 的疑似 bug 是逐行推导，<strong>未实机跑</strong>。</li>
+<li><strong>S2V 的 16,925,024,089 里 <code>AdaLayerNorm</code> 用了等价 stub</strong>，若真实 diffusers 版本结构不同会有偏差。</li>
+<li><strong>发布/更新日期来自 README 文字</strong>，本地是 shallow clone（仅 1 个 commit），无法交叉验证。</li>
+<li><strong>README 提到的其他仓库与集成</strong>（ComfyUI、Diffusers、vLLM、SGLang）只有链接，本仓库无代码。</li>
+<li><strong>无训练细节、无数据规模证据</strong>、无量化脚本、无导出脚本。</li>
+<li><strong>风险</strong>：参数量是 meta device 实测（可靠），但<strong>性能结论依赖厂商图表</strong>；单卡跑 A14B 需要 80GB 显存，且每次专家切换都要搬运权重。</li>
+</ol>
+<hr />
+<h2>来源 / Sources</h2>
+<p><strong>仓库</strong></p>
+<ul>
+<li>URL：<a href="https://github.com/Wan-Video/Wan2.2">https://github.com/Wan-Video/Wan2.2</a></li>
+<li>分支：<code>main</code>；HEAD <code>1ea34ff48f87168174e12956e200b1d908b1c5ff</code>（2026-09-21 14:16:22 +0800）</li>
+<li>提交总数：1（shallow clone）；License：Apache 2.0（<code>LICENSE.txt</code>）</li>
+<li>论文：arXiv 2503.20314；训练实现见 DiffSynth-Studio 等第三方</li>
+<li>本地路径：<code>Wan2.2/</code>（临时目录）</li>
+</ul>
+<p><strong>关键文件</strong></p>
+<p><code>wan/modules/model.py</code>（DiT 主干）、<code>wan/modules/vae2_1.py</code> / <code>vae2_2.py</code>（两套 VAE）、<code>wan/modules/attention.py</code>（FlashAttention）、<code>wan/modules/t5.py</code>（umT5-XXL）、<code>wan/text2video.py</code>（MoE 切换与主循环）、<code>wan/image2video.py</code>、<code>wan/textimage2video.py</code>、<code>wan/speech2video.py</code>、<code>wan/animate.py</code>、<code>wan/configs/*.py</code>、<code>wan/distributed/</code>、<code>generate.py</code></p>
+<p><strong>执行过的命令（可复现）</strong></p>
+<pre><code class="language-bash">git -C Wan2.2/ log -1 --format='%H %ci %s'
+git -C Wan2.2/ ls-files | wc -l                      # 87
+git -C Wan2.2/ ls-files '*.py' | xargs wc -l | tail  # 19,138 行
+git -C Wan2.2/ ls-files | grep -E '\.ya?ml$'         # 零命中
+git -C Wan2.2/ grep -i -e sage -e fp8 -- wan/       # 零命中
+# 参数量：把源码 import 到 torch.device('meta')，逐参数 numel() 求和（torch 2.13.0）
+</code></pre>
+<p><strong>时间</strong>：全部调研于 2026-11-08（Asia/Shanghai）离线完成；未访问网络。</p>
+    
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+
+    document.addEventListener('click', function(e) {
+      var mDiv = e.target.closest('.mermaid');
+      if (mDiv && !e.target.closest('.mermaid-overlay')) {
+        var svg = mDiv.querySelector('svg');
+        if (!svg) return;
+
+        var overlay = document.createElement('div');
+        overlay.className = 'mermaid-overlay';
+
+        var hint = document.createElement('div');
+        hint.className = 'zoom-hint';
+        hint.textContent = 'Scroll to zoom · Drag to pan · ESC to close';
+        overlay.appendChild(hint);
+
+        var controls = document.createElement('div');
+        controls.className = 'zoom-controls';
+        var btnPlus = document.createElement('button'); btnPlus.textContent = '+';
+        var btnMinus = document.createElement('button'); btnMinus.textContent = '−';
+        var btnFit = document.createElement('button'); btnFit.textContent = '↺';
+        btnFit.title = 'Fit to screen';
+        controls.appendChild(btnPlus);
+        controls.appendChild(btnMinus);
+        controls.appendChild(btnFit);
+        overlay.appendChild(controls);
+
+        var container = document.createElement('div');
+        container.className = 'zoom-container';
+        var clone = svg.cloneNode(true);
+        clone.removeAttribute('width');
+        clone.removeAttribute('height');
+        var bb = svg.getBBox ? svg.getBBox() : null;
+        var svgW = bb ? bb.width + bb.x + 40 : svg.scrollWidth || 800;
+        var svgH = bb ? bb.height + bb.y + 40 : svg.scrollHeight || 600;
+        clone.setAttribute('width', svgW);
+        clone.setAttribute('height', svgH);
+        container.appendChild(clone);
+        overlay.appendChild(container);
+        document.body.appendChild(overlay);
+
+        var scale = 1, tx = 0, ty = 0;
+        var dragging = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
+
+        function fitToScreen() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var sx = (vw * 0.92) / svgW, sy = (vh * 0.9) / svgH;
+          scale = Math.min(sx, sy, 3);
+          tx = (vw - svgW * scale) / 2;
+          ty = (vh - svgH * scale) / 2;
+          applyTransform();
+        }
+
+        function applyTransform() {
+          clone.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+        }
+
+        function zoomAt(cx, cy, factor) {
+          var newScale = Math.min(Math.max(scale * factor, 0.15), 8);
+          tx = cx - (cx - tx) * (newScale / scale);
+          ty = cy - (cy - ty) * (newScale / scale);
+          scale = newScale;
+          applyTransform();
+        }
+
+        fitToScreen();
+
+        container.addEventListener('wheel', function(ev) {
+          ev.preventDefault();
+          var factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
+          zoomAt(ev.clientX, ev.clientY, factor);
+        }, { passive: false });
+
+        container.addEventListener('mousedown', function(ev) {
+          if (ev.button !== 0) return;
+          dragging = true; startX = ev.clientX; startY = ev.clientY;
+          startTx = tx; startTy = ty;
+          container.classList.add('dragging');
+          ev.preventDefault();
+        });
+        window.addEventListener('mousemove', function moveHandler(ev) {
+          if (!dragging) return;
+          tx = startTx + (ev.clientX - startX);
+          ty = startTy + (ev.clientY - startY);
+          applyTransform();
+        });
+        window.addEventListener('mouseup', function upHandler() {
+          if (dragging) { dragging = false; container.classList.remove('dragging'); }
+        });
+
+        container.addEventListener('dblclick', function(ev) {
+          ev.stopPropagation();
+          zoomAt(ev.clientX, ev.clientY, 1.8);
+        });
+
+        btnPlus.addEventListener('click', function(ev) { ev.stopPropagation(); zoomAt(window.innerWidth/2, window.innerHeight/2, 1.4); });
+        btnMinus.addEventListener('click', function(ev) { ev.stopPropagation(); zoomAt(window.innerWidth/2, window.innerHeight/2, 1/1.4); });
+        btnFit.addEventListener('click', function(ev) { ev.stopPropagation(); fitToScreen(); });
+
+        overlay.addEventListener('click', function(ev) {
+          if (ev.target === overlay) overlay.remove();
+        });
+      }
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var ov = document.querySelector('.mermaid-overlay');
+        if (ov) ov.remove();
+      }
+    });
+  </script>
+</body>
+</html>

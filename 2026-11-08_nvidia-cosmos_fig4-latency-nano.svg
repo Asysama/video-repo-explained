@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700" font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, Helvetica, Arial, sans-serif">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+
+  <!-- ===== Title ===== -->
+  <text x="40" y="46" font-size="16" font-weight="700" fill="#0f172a">Cosmos3-Nano(16B) · 图生视频 720p · 189 帧 @24fps · 单卡端到端耗时</text>
+
+  <!-- ===== Legend (top-right) ===== -->
+  <g>
+    <rect x="1156" y="27" width="14" height="14" fill="#ea580c"/>
+    <text x="1178" y="39" font-size="14" fill="#334155">NVIDIA NIM</text>
+    <rect x="1272" y="27" width="14" height="14" fill="#2563eb"/>
+    <text x="1294" y="39" font-size="14" fill="#334155">Diffusers</text>
+  </g>
+
+  <!-- ===== Gridlines (0 / 200 / 400 / 600 / 800 / 1000 s) ===== -->
+  <g stroke="#eef2f6" stroke-width="1">
+    <line x1="180" y1="96" x2="180" y2="556"/>
+    <line x1="404" y1="96" x2="404" y2="556"/>
+    <line x1="628" y1="96" x2="628" y2="556"/>
+    <line x1="852" y1="96" x2="852" y2="556"/>
+    <line x1="1076" y1="96" x2="1076" y2="556"/>
+    <line x1="1300" y1="96" x2="1300" y2="556"/>
+  </g>
+
+  <!-- ===== Bars (scale: 1 px = 0.893 s ; x=180 is 0 s, x=1300 is 1000 s) ===== -->
+  <!-- B200 -->
+  <g>
+    <rect x="180" y="104" width="55.06" height="30" fill="#ea580c"/>
+    <rect x="180" y="146" width="129.92" height="30" fill="#2563eb"/>
+    <text x="245.06" y="119" font-size="14" font-weight="700" fill="#ea580c" dominant-baseline="middle">49.16 秒</text>
+    <text x="319.92" y="161" font-size="14" font-weight="700" fill="#2563eb" dominant-baseline="middle">116.00 秒</text>
+    <text x="160" y="140" font-size="15" font-weight="700" fill="#334155" text-anchor="end" dominant-baseline="middle">B200</text>
+  </g>
+  <!-- B300 -->
+  <g>
+    <rect x="180" y="220" width="52.43" height="30" fill="#ea580c"/>
+    <rect x="180" y="262" width="147" height="30" fill="#2563eb"/>
+    <text x="242.43" y="235" font-size="14" font-weight="700" fill="#ea580c" dominant-baseline="middle">46.81 秒</text>
+    <text x="337" y="277" font-size="14" font-weight="700" fill="#2563eb" dominant-baseline="middle">131.25 秒</text>
+    <text x="160" y="256" font-size="15" font-weight="700" fill="#334155" text-anchor="end" dominant-baseline="middle">B300</text>
+  </g>
+  <!-- H100 80GB -->
+  <g>
+    <rect x="180" y="336" width="96.99" height="30" fill="#ea580c"/>
+    <rect x="180" y="378" width="268.58" height="30" fill="#2563eb"/>
+    <text x="286.99" y="351" font-size="14" font-weight="700" fill="#ea580c" dominant-baseline="middle">86.60 秒</text>
+    <text x="458.58" y="393" font-size="14" font-weight="700" fill="#2563eb" dominant-baseline="middle">239.80 秒</text>
+    <text x="160" y="372" font-size="15" font-weight="700" fill="#334155" text-anchor="end" dominant-baseline="middle">H100 80GB</text>
+  </g>
+  <!-- H20 -->
+  <g>
+    <rect x="180" y="452" width="316.3" height="30" fill="#ea580c"/>
+    <rect x="180" y="494" width="1036" height="30" fill="#2563eb"/>
+    <text x="506.3" y="467" font-size="14" font-weight="700" fill="#ea580c" dominant-baseline="middle">282.41 秒</text>
+    <text x="1226" y="509" font-size="14" font-weight="700" fill="#2563eb" dominant-baseline="middle">925.00 秒</text>
+    <text x="160" y="488" font-size="15" font-weight="700" fill="#334155" text-anchor="end" dominant-baseline="middle">H20</text>
+  </g>
+
+  <!-- ===== Callout: B300 Diffusers is slower than B200 Diffusers ===== -->
+  <g>
+    <path d="M 327 277 L 327 292 L 428 292" fill="none" stroke="#ea580c" stroke-width="1.4"/>
+    <circle cx="327" cy="277" r="3.2" fill="#ea580c"/>
+    <rect x="430" y="250" width="700" height="48" rx="8" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+    <text x="448" y="274" font-size="14" fill="#9a3412" dominant-baseline="middle">注意：B300 上 Diffusers（131.25）反而比 B200（116.00）更慢 —— 换新卡不等于换新引擎</text>
+  </g>
+
+  <!-- ===== Axis ===== -->
+  <g>
+    <line x1="180" y1="556" x2="1300" y2="556" stroke="#64748b" stroke-width="1.5"/>
+    <g stroke="#94a3b8" stroke-width="1.5">
+      <line x1="180" y1="556" x2="180" y2="563"/>
+      <line x1="404" y1="556" x2="404" y2="563"/>
+      <line x1="628" y1="556" x2="628" y2="563"/>
+      <line x1="852" y1="556" x2="852" y2="563"/>
+      <line x1="1076" y1="556" x2="1076" y2="563"/>
+      <line x1="1300" y1="556" x2="1300" y2="563"/>
+    </g>
+    <g font-size="12" fill="#94a3b8" text-anchor="middle">
+      <text x="180" y="580">0</text>
+      <text x="404" y="580">200</text>
+      <text x="628" y="580">400</text>
+      <text x="852" y="580">600</text>
+      <text x="1076" y="580">800</text>
+      <text x="1300" y="580">1000</text>
+    </g>
+    <text x="740" y="614" font-size="14" fill="#334155" text-anchor="middle">耗时（秒）</text>
+  </g>
+
+  <!-- ===== Source ===== -->
+  <text x="40" y="670" font-size="12" fill="#94a3b8">来源：docs/reference/inference_benchmarks/cosmos3-nano-generator.md:61-194</text>
+</svg>
